@@ -37,7 +37,7 @@ const ListView = ({ month, items, onOpen }: {
       {days.map(([key, dayItems]) => (
         <div key={key} className="rounded-[0.75rem] border bg-card p-[0.75rem]">
           <div className="mb-[0.5rem] flex items-baseline gap-[0.5rem]">
-            <span className="text-sm font-semibold">{format(new Date(key), 'EEE, d MMM')}</span>
+            <span className="text-sm font-semibold">{format(new Date(key), 'EEE, MMM d, yyyy')}</span>
             <span className="text-[0.75rem] text-muted-foreground">{dayItems.length} item(s)</span>
           </div>
 

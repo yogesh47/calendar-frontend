@@ -35,6 +35,7 @@ import {
   DEPARTMENT_OPTIONS,
   EVENT_TYPE_OPTIONS,
   MODE_OPTIONS,
+  REMIND_BEFORE_OPTIONS,
   OPPORTUNITY_OPTIONS,
 } from '../../constants/tpo'
 import type { DayEntry } from '../DayPreview'
@@ -44,6 +45,7 @@ interface EventDrawerProps {
   open: boolean
   initial: EventDraft
   isEdit: boolean
+  reminderOnly?: boolean
   canCancelEvent?: boolean
   canDeleteReminder?: boolean
   dayEntries: DayEntry[]
@@ -80,6 +82,7 @@ const EventDrawer = ({
   open,
   initial,
   isEdit,
+  reminderOnly,
   canCancelEvent,
   canDeleteReminder,
   dayEntries,
@@ -98,7 +101,7 @@ const EventDrawer = ({
     validateOnBlur: true,
     validate: (values) => {
       try {
-        validateYupSchema(values, eventSchema, true, { eventType: values.eventType })
+        validateYupSchema(values, eventSchema, true, { eventType: values.eventType, studentReminder: reminderOnly })
       } catch (error) {
         return yupToFormErrors(error)
       }
@@ -234,12 +237,14 @@ const EventDrawer = ({
                 <CalendarPlus className="size-5" />
               </span>
               <div>
-                <DialogTitle>{isEdit ? 'Edit Event' : 'Create New Event'}</DialogTitle>
+                <DialogTitle>
+                {reminderOnly ? (isEdit ? 'Edit Reminder' : 'Add Reminder') : isEdit ? 'Edit Event' : 'Create New Event'}
+              </DialogTitle>
                 <DialogDescription className="sr-only">Event details</DialogDescription>
               </div>
             </div>
 
-            {!isEdit && (
+            {!isEdit && !reminderOnly && (
               <Button type="button" variant="outline" size="sm" className="mr-16" onClick={fillDummy}>
                 <Wand2 className="size-3.5" />
                 Fill Data
@@ -255,20 +260,22 @@ const EventDrawer = ({
           )}
         >
           <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
-          <Section title="Event basics">
-          <div className="space-y-1.5">
-            <Label>
-              Event Type <Required />
-            </Label>
-            <Combobox
-              searchable={false}
-              disabled={isEdit}
-              value={draft.eventType}
-              placeholder="Select event type"
-              options={EVENT_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-              onChange={(value) => pickType(value as TpoEventType)}
-            />
-          </div>
+          <Section title={reminderOnly ? 'Reminder' : 'Event basics'}>
+          {!reminderOnly && (
+            <div className="space-y-1.5">
+              <Label>
+                Event Type <Required />
+              </Label>
+              <Combobox
+                searchable={false}
+                disabled={isEdit}
+                value={draft.eventType}
+                placeholder="Select event type"
+                options={EVENT_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                onChange={(value) => pickType(value as TpoEventType)}
+              />
+            </div>
+          )}
 
           {isReminder && <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>Only you can see this. No students are notified.</InfoNote>}
 
@@ -377,6 +384,19 @@ const EventDrawer = ({
               </div>
             )}
           </div>
+
+          {reminderOnly && (
+            <div className="space-y-1.5">
+              <Label>Remind me</Label>
+              <Combobox
+                searchable={false}
+                value={draft.remindBefore}
+                placeholder="None"
+                options={REMIND_BEFORE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                onChange={(value) => set('remindBefore', value)}
+              />
+            </div>
+          )}
 
           {rules.info && !isReminder && <InfoNote>{rules.info}</InfoNote>}
 

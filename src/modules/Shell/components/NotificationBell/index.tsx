@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { format, isSameDay, isToday, isYesterday } from 'date-fns'
 import { Bell, CalendarDays, CalendarX2, CheckCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { messageOf, showError } from '@/lib/toast'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { cn } from '@/lib/utils'
 import { onWindowFocus, requestOpenEvent } from '@/modules/Calendar/services/store'
@@ -53,7 +54,13 @@ const NotificationBell = () => {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<ApiNotification[]>([])
 
-  const refresh = async () => setNotifications(await fetchNotifications())
+  const refresh = async () => {
+    try {
+      setNotifications(await fetchNotifications())
+    } catch (error) {
+      showError(messageOf(error))
+    }
+  }
 
   useEffect(() => {
     refresh()
@@ -67,10 +74,23 @@ const NotificationBell = () => {
   const unread = notifications.filter((entry) => !entry.is_read).length
 
   const openEvent = async (notification: ApiNotification) => {
-    await readNotification(notification.notification_id)
-    await refresh()
+    try {
+      await readNotification(notification.notification_id)
+      await refresh()
+    } catch (error) {
+      showError(messageOf(error))
+    }
     requestOpenEvent(notification.event_id)
     setOpen(false)
+  }
+
+  const readEverything = async () => {
+    try {
+      await readAllNotifications()
+      await refresh()
+    } catch (error) {
+      showError(messageOf(error))
+    }
   }
 
   return (
@@ -110,7 +130,7 @@ const NotificationBell = () => {
               {unread > 0 && (
                 <Button
                   variant="link"
-                  onClick={() => readAllNotifications().then(refresh)}
+                  onClick={readEverything}
                   className="h-auto gap-[0.375rem] p-0 text-[0.8125rem] font-semibold [color:var(--ds-color-brand)]"
                 >
                   <CheckCheck className="size-4" strokeWidth={2} />

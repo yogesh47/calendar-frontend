@@ -20,7 +20,9 @@ export const eventSchema = yup.object({
     .string()
     .required('Date is required.')
     .test('not-past', 'Date must be today or later.', function (value) {
-      if (!value || this.parent.eventType === 'my_reminder') return true
+      if (!value) return true
+      if (this.parent.eventType === 'my_reminder' && !this.options.context?.studentReminder) return true
+
       return value >= todayValue()
     }),
   startTime: yup.string().test('start-needed', 'Start time is required.', function (value) {
@@ -45,9 +47,13 @@ export const eventSchema = yup.object({
     .string()
     .max(LIMITS.venueLength)
     .test('venue-needed', 'Venue is required.', function (value) {
+      if (!needsMode(this.parent.eventType)) return true
+
       return this.parent.mode !== 'offline' || Boolean(value?.trim())
     }),
   onlinePlatform: yup.string().test('platform-needed', 'Online platform is required.', function (value) {
+    if (!needsMode(this.parent.eventType)) return true
+
     return this.parent.mode !== 'online' || Boolean(value?.trim())
   }),
   description: yup.string().max(LIMITS.descriptionLength),

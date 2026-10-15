@@ -13,6 +13,8 @@ export type OpportunityType = 'job' | 'internship' | 'general'
 
 export type EventMode = 'offline' | 'online' | ''
 
+export type RemindBefore = 'none' | 'at_time' | '15_min' | '1_hour' | '1_day'
+
 export type CancelReason = 'postponed' | 'company_withdrew' | 'created_by_mistake' | 'other'
 
 export type LinkedJob = {
@@ -42,8 +44,11 @@ export type EventDraft = {
   onlinePlatform: string
   description: string
   note: string
+  remindBefore: RemindBefore
   audience: Audience
   linkedJob: LinkedJob | null
+  linkedType: 'event' | 'job_deadline' | null
+  linkedId: string | null
 }
 
 export type TpoEvent = {

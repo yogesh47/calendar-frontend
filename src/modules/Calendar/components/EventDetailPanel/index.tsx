@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { ExternalLink, Info, Trash2 } from 'lucide-react'
+import { BellPlus, ExternalLink, Info, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import {
@@ -22,6 +22,7 @@ interface EventDetailPanelProps {
   onCancel: () => void
   onDelete: () => void
   onDeleteForever: () => void
+  onRemindMe?: () => void
 }
 
 const Line = ({ label, value }: { label: string; value?: string }) => {
@@ -35,7 +36,16 @@ const Line = ({ label, value }: { label: string; value?: string }) => {
   )
 }
 
-const EventDetailPanel = ({ event, onOpenJob, onClose, onEdit, onCancel, onDelete, onDeleteForever }: EventDetailPanelProps) => {
+const EventDetailPanel = ({
+  event,
+  onOpenJob,
+  onClose,
+  onEdit,
+  onCancel,
+  onDelete,
+  onDeleteForever,
+  onRemindMe,
+}: EventDetailPanelProps) => {
   if (!event) return null
 
   const { draft } = event
@@ -81,6 +91,11 @@ const EventDetailPanel = ({ event, onOpenJob, onClose, onEdit, onCancel, onDelet
       </Button>
       <Button onClick={onEdit}>Edit</Button>
     </>
+  ) : onRemindMe ? (
+    <Button variant="outline" onClick={onRemindMe}>
+      <BellPlus className="size-4" />
+      Remind me
+    </Button>
   ) : isMine ? (
     <>
       <Button variant="outline" onClick={onCancel}>
@@ -114,8 +129,8 @@ const EventDetailPanel = ({ event, onOpenJob, onClose, onEdit, onCancel, onDelet
             value={
               day
                 ? lastDay
-                  ? `${format(day, 'EEE, d MMM yyyy')} → ${format(lastDay, 'EEE, d MMM yyyy')}`
-                  : format(day, 'EEE, d MMM yyyy')
+                  ? `${format(day, 'EEE, MMM d, yyyy')} → ${format(lastDay, 'EEE, MMM d, yyyy')}`
+                  : format(day, 'EEE, MMM d, yyyy')
                 : undefined
             }
           />

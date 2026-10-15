@@ -4,6 +4,7 @@ import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, 
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { messageOf, showError, showSuccess } from '@/lib/toast'
 import ListView from '../../components/ListView'
 import DaysGrid from '../../components/DaysGrid'
 import MonthGrid from '../../components/MonthGrid'
@@ -31,6 +32,7 @@ import {
   updateEvent,
 } from '../../services/api'
 import { changedSummary, itemFromEvent, onlyMinorChanged, rulesFor } from '../../helpers/tpo'
+import { LIMITS } from '../../constants'
 import { EMPTY_DRAFT, EMPTY_FILTERS, SIGNED_IN_TPO } from '../../constants/tpo'
 import type { CalendarView } from '../../types'
 import type { CalendarFilters, CancelReason, EventDraft, TpoEvent } from '../../types/tpo'
@@ -66,7 +68,6 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   const [deleting, setDeleting] = useState<TpoEvent | null>(null)
   const [purging, setPurging] = useState<TpoEvent | null>(null)
   const [wiping, setWiping] = useState(false)
-  const [toast, setToast] = useState('')
 
   const isTpo = role === 'tpo'
 
@@ -80,13 +81,13 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
   useEffect(() => onWindowFocus(refresh), [])
 
-  useEffect(() => {
-    if (!toast) return
-    const timer = window.setTimeout(() => setToast(''), 4000)
-    return () => window.clearTimeout(timer)
-  }, [toast])
-
-  const refresh = async () => setEvents(await fetchEvents())
+  const refresh = async () => {
+    try {
+      setEvents(await fetchEvents())
+    } catch (error) {
+      showError(messageOf(error))
+    }
+  }
 
   const goBack = () => {
     if (view === 'day') {
@@ -118,19 +119,22 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   const rangeLabel =
     view === 'day'
       ? dayCount === 1
-        ? format(selectedDay, 'MMMM d, yyyy')
-        : `${format(selectedDay, 'MMMM d')}–${format(addDays(selectedDay, dayCount - 1), 'd, yyyy')}`
+        ? format(selectedDay, 'EEE, MMM d, yyyy')
+        : `${format(selectedDay, 'EEE, MMM d')} – ${format(addDays(selectedDay, dayCount - 1), 'EEE, MMM d, yyyy')}`
       : view === 'week'
-        ? `${format(startOfWeek(month, { weekStartsOn: 1 }), 'd MMM')} – ${format(endOfWeek(month, { weekStartsOn: 1 }), 'd MMM yyyy')}`
+        ? `${format(startOfWeek(month, { weekStartsOn: 1 }), 'EEE, MMM d')} – ${format(endOfWeek(month, { weekStartsOn: 1 }), 'EEE, MMM d, yyyy')}`
         : format(month, 'MMMM yyyy')
+
+  const upcomingReminders = events.filter(
+    (event) => event.draft.eventType === 'my_reminder' && event.draft.eventDate >= format(new Date(), 'yyyy-MM-dd'),
+  ).length
 
   const opened = events.find((event) => event.id === openedId) ?? null
 
   const visible = useMemo(() => {
     const fromEvents = events
-      .filter((event) => (isTpo ? true : event.draft.eventType !== 'my_reminder'))
       .filter((event) => isTpo || event.cancelReason !== 'created_by_mistake')
-      .filter((event) => event.createdBy === SIGNED_IN_TPO || event.draft.eventType !== 'my_reminder')
+      .filter((event) => event.draft.eventType !== 'my_reminder' || event.createdBy === SIGNED_IN_TPO)
       .filter((event) => !filters.types.length || filters.types.includes(event.draft.eventType))
       .filter((event) => !filters.companies.length || filters.companies.includes(event.draft.company))
       .filter((event) => !filters.createdByMe || event.createdBy === SIGNED_IN_TPO)
@@ -162,7 +166,33 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   }, [events, filters, isTpo])
 
   const openCreate = (eventDate: string) =>
-    setDrawer({ open: true, draft: newDraftOn(eventDate), editing: null })
+    setDrawer({
+      open: true,
+      draft: isTpo
+        ? newDraftOn(eventDate)
+        : { ...newDraftOn(eventDate), eventType: 'my_reminder', mode: '', endTime: '' },
+      editing: null,
+    })
+
+  const remindMe = (event: TpoEvent) => {
+    setOpenedId(null)
+    setDrawer({
+      open: true,
+      editing: null,
+      draft: {
+        ...EMPTY_DRAFT,
+        mode: '',
+        eventType: 'my_reminder',
+        title: event.draft.title,
+        eventDate: event.draft.eventDate,
+        endDate: event.draft.eventDate,
+        startTime: event.draft.startTime,
+        remindBefore: '1_hour',
+        linkedType: 'event',
+        linkedId: event.id,
+      },
+    })
+  }
 
   const openEdit = (event: TpoEvent) => {
     setOpenedId(null)
@@ -173,23 +203,37 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
     rulesFor(draft.eventType).needsAudience ? countAudience(draft.audience) : 0
 
   const publish = async (draft: EventDraft) => {
-    const created = await createEvent(draft)
-    await refresh()
-    setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
-    setToast(
-      draft.eventType === 'my_reminder'
-        ? 'Reminder saved.'
-        : `Event published. ${created.notifiedCount} students notified.`,
-    )
+    try {
+      const created = await createEvent(draft)
+      await refresh()
+      setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
+      showSuccess(
+        draft.eventType === 'my_reminder'
+          ? `Reminder saved. ${rulesFor('my_reminder').info}`
+          : `Event published. ${created.notifiedCount} students notified.`,
+      )
+    } catch (error) {
+      showError(messageOf(error))
+    }
   }
 
   const applyEdit = async (draft: EventDraft, notified: number) => {
     const editing = drawer.editing as TpoEvent
-    await updateEvent(editing.id, draft)
-    await refresh()
-    setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
-    setPendingDraft(null)
-    setToast(notified ? `Changes saved. ${notified} students notified.` : 'Changes saved.')
+    try {
+      await updateEvent(editing.id, draft)
+      await refresh()
+      setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
+      setPendingDraft(null)
+      showSuccess(
+        draft.eventType === 'my_reminder'
+          ? `Reminder updated. ${rulesFor('my_reminder').info}`
+          : notified
+            ? `Changes saved. ${notified} students notified.`
+            : 'Changes saved.',
+      )
+    } catch (error) {
+      showError(messageOf(error))
+    }
   }
 
   const save = (draft: EventDraft) => {
@@ -209,37 +253,53 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
   const confirmCancel = async (reason: CancelReason, note: string) => {
     const event = cancelling as TpoEvent
-    await cancelEvent(event.id, reason, note)
-    await refresh()
-    setCancelling(null)
-    setOpenedId(null)
-    setToast(`Event cancelled. ${event.notifiedCount} students notified.`)
+    try {
+      await cancelEvent(event.id, reason, note)
+      await refresh()
+      setCancelling(null)
+      setOpenedId(null)
+      showSuccess(`Event cancelled. ${event.notifiedCount} students notified.`)
+    } catch (error) {
+      showError(messageOf(error))
+    }
   }
 
   const confirmWipe = async () => {
-    const { count } = await deleteAllEvents()
-    await refresh()
-    setWiping(false)
-    setOpenedId(null)
-    setToast(count ? `${count} items deleted permanently.` : 'Nothing to delete.')
+    try {
+      const { count } = await deleteAllEvents()
+      await refresh()
+      setWiping(false)
+      setOpenedId(null)
+      showSuccess(count ? `${count} items deleted permanently.` : 'Nothing to delete.')
+    } catch (error) {
+      showError(messageOf(error))
+    }
   }
 
   const confirmPurge = async () => {
     const event = purging as TpoEvent
-    await deleteReminder(event.id)
-    await refresh()
-    setPurging(null)
-    setOpenedId(null)
-    setToast('Event deleted permanently.')
+    try {
+      await deleteReminder(event.id)
+      await refresh()
+      setPurging(null)
+      setOpenedId(null)
+      showSuccess('Event deleted permanently.')
+    } catch (error) {
+      showError(messageOf(error))
+    }
   }
 
   const confirmDelete = async () => {
     const event = deleting as TpoEvent
-    await deleteReminder(event.id)
-    await refresh()
-    setDeleting(null)
-    setOpenedId(null)
-    setToast('Reminder deleted.')
+    try {
+      await deleteReminder(event.id)
+      await refresh()
+      setDeleting(null)
+      setOpenedId(null)
+      showSuccess('Reminder deleted.')
+    } catch (error) {
+      showError(messageOf(error))
+    }
   }
 
   return (
@@ -281,12 +341,14 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         <section className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 [background-color:var(--ds-color-bg-surface)]">
             <div className="flex items-center gap-2">
-              {isTpo && (
-                <Button size="sm" onClick={() => openCreate(format(selectedDay, 'yyyy-MM-dd'))}>
-                  <Plus className="size-3.5" />
-                  New Event
-                </Button>
-              )}
+              <Button
+                size="sm"
+                disabled={!isTpo && upcomingReminders >= LIMITS.studentUpcomingReminders}
+                onClick={() => openCreate(format(selectedDay, 'yyyy-MM-dd'))}
+              >
+                <Plus className="size-3.5" />
+                {isTpo ? 'New Event' : 'Add Reminder'}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -398,7 +460,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               onOpen={(item) => setOpenedId(item.id)}
               onPickDate={(day) => {
                 setSelectedDay(day)
-                if (isTpo) openCreate(format(day, 'yyyy-MM-dd'))
+                openCreate(format(day, 'yyyy-MM-dd'))
               }}
             />
           )}
@@ -410,7 +472,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               onOpen={(item) => setOpenedId(item.id)}
               onPickDate={(day) => {
                 setSelectedDay(day)
-                if (isTpo) openCreate(format(day, 'yyyy-MM-dd'))
+                openCreate(format(day, 'yyyy-MM-dd'))
               }}
             />
           )}
@@ -418,16 +480,11 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         </section>
       </div>
 
-      {toast && (
-        <div className="fixed bottom-[1.5rem] left-1/2 z-[80] -translate-x-1/2 rounded-[0.5rem] bg-foreground px-[1rem] py-[0.625rem] text-[0.8125rem] font-medium text-white shadow-lg">
-          {toast}
-        </div>
-      )}
-
       <EventDrawer
         open={drawer.open}
         initial={drawer.draft}
         isEdit={Boolean(drawer.editing)}
+        reminderOnly={!isTpo}
         onOpenJob={() => {
           setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
           navigate(`/${role}/jobs`)
@@ -486,6 +543,11 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         onCancel={() => setCancelling(opened)}
         onDelete={() => setDeleting(opened)}
         onDeleteForever={() => setPurging(opened)}
+        onRemindMe={
+          !isTpo && opened && opened.draft.eventType !== 'my_reminder' && !opened.cancelledAt
+            ? () => remindMe(opened)
+            : undefined
+        }
       />
 
       <CancelDialog

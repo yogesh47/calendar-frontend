@@ -41,6 +41,9 @@ type ApiEvent = {
     departments: string[]
   } | null
   linked_job: { kind: string; campus_job: string | null; url: string | null; title: string | null } | null
+  remind_before: string | null
+  linked_type: string | null
+  linked_id: string | null
   is_owner: boolean
 }
 
@@ -96,6 +99,9 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
           departments: entry.audience.departments,
         }
       : EMPTY_DRAFT.audience,
+    remindBefore: (entry.remind_before as EventDraft['remindBefore']) ?? 'none',
+    linkedType: (entry.linked_type as EventDraft['linkedType']) ?? null,
+    linkedId: entry.linked_id ?? null,
     linkedJob: entry.linked_job
       ? {
           kind: entry.linked_job.kind as 'campus' | 'external',
@@ -129,6 +135,9 @@ const toPayload = (draft: EventDraft) => ({
           batches: draft.audience.batches,
           departments: draft.audience.departments,
         },
+  remind_before: draft.remindBefore,
+  linked_type: draft.linkedType,
+  linked_id: draft.linkedId,
   linked_job: draft.linkedJob
     ? {
         kind: draft.linkedJob.kind,

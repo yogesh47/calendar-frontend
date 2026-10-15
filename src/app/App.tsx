@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppShell from '@/modules/Shell/components/AppShell'
+import AppToaster from '@/components/custom/AppToaster'
 import LoginPage from '@/modules/Auth/pages/LoginPage'
 import JobListPage from '@/modules/Jobs/pages/JobListPage'
 import RequireAuth from '@/modules/Auth/components/RequireAuth'
@@ -34,18 +35,22 @@ const App = () => {
   ]
 
   return (
-    <Routes>
-      <Route path={LOGIN_ROUTE} element={<LoginPage session={session} onSignedIn={signIn} />} />
-      <Route path="/" element={<Navigate to={landing} replace />} />
+    <>
+      <AppToaster />
 
-      {(['tpo', 'student'] as Role[]).flatMap((role) =>
-        pagesFor(role).map((page) => (
-          <Route key={page.path} path={page.path} element={guarded(role, page.element)} />
-        )),
-      )}
+      <Routes>
+        <Route path={LOGIN_ROUTE} element={<LoginPage session={session} onSignedIn={signIn} />} />
+        <Route path="/" element={<Navigate to={landing} replace />} />
 
-      <Route path="*" element={<Navigate to={landing} replace />} />
-    </Routes>
+        {(['tpo', 'student'] as Role[]).flatMap((role) =>
+          pagesFor(role).map((page) => (
+            <Route key={page.path} path={page.path} element={guarded(role, page.element)} />
+          )),
+        )}
+
+        <Route path="*" element={<Navigate to={landing} replace />} />
+      </Routes>
+    </>
   )
 }
 

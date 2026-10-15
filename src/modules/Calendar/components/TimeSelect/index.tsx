@@ -39,3 +39,10 @@ const TimeSelect = ({ value, onChange }: TimeSelectProps) => (
 )
 
 export default TimeSelect
+
+export const minusHour = (value: string): string => {
+  const [hour, minute] = value.split(':').map(Number)
+  const minutes = (hour * 60 + minute - 60 + 24 * 60) % (24 * 60)
+
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}

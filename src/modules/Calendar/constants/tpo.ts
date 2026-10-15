@@ -1,5 +1,13 @@
 import { CAMPUS_JOBS, EXTERNAL_JOBS, jobLabel } from '../services/jobs'
-import type { Audience, CalendarFilters, CancelReason, EventDraft, OpportunityType, TpoEventType } from '../types/tpo'
+import type {
+  Audience,
+  CalendarFilters,
+  CancelReason,
+  EventDraft,
+  OpportunityType,
+  RemindBefore,
+  TpoEventType,
+} from '../types/tpo'
 
 export const SIGNED_IN_TPO = 'me'
 
@@ -86,6 +94,14 @@ export const MODE_OPTIONS: { value: 'offline' | 'online'; label: string }[] = [
   { value: 'online', label: 'Online' },
 ]
 
+export const REMIND_BEFORE_OPTIONS: { value: RemindBefore; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'at_time', label: 'At the time' },
+  { value: '15_min', label: '15 minutes before' },
+  { value: '1_hour', label: '1 hour before' },
+  { value: '1_day', label: '1 day before' },
+]
+
 export const CANCEL_REASON_OPTIONS: { value: CancelReason; label: string }[] = [
   { value: 'postponed', label: 'Postponed' },
   { value: 'company_withdrew', label: 'Company Withdrew' },
@@ -136,8 +152,11 @@ export const EMPTY_DRAFT: EventDraft = {
   onlinePlatform: '',
   description: '',
   note: '',
+  remindBefore: 'none',
   audience: EMPTY_AUDIENCE,
   linkedJob: null,
+  linkedType: null,
+  linkedId: null,
 }
 
 export const EMPTY_FILTERS: CalendarFilters = {

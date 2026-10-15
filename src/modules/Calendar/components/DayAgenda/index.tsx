@@ -39,7 +39,7 @@ const DayAgenda = ({ day, items, hiddenCount, onOpen }: DayAgendaProps) => (
       className="w-[20rem] p-0 [background-color:var(--ds-color-bg-surface)]"
       onClick={(event) => event.stopPropagation()}
     >
-      <p className="border-b px-4 py-3 text-base font-semibold">{format(day, 'EEE, MMM d')}</p>
+      <p className="border-b px-4 py-3 text-base font-semibold">{format(day, 'EEE, MMM d, yyyy')}</p>
 
       <div className="max-h-[18rem] overflow-y-auto">
         {items.map((item) => {
