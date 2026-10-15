@@ -1,10 +1,11 @@
 import { ListFilter } from 'lucide-react'
 import { Label } from '@/components/ui/Label'
+import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '../../constants'
+import type { CalendarItemKind } from '../../types'
 import { Button } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { MultiSelect } from '@/components/ui/MultiSelect'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
-import { CALENDAR_ITEM_STYLE } from '../../constants'
 import {
   BATCH_OPTIONS,
   COMPANY_OPTIONS,
@@ -14,7 +15,6 @@ import {
   EVENT_TYPE_OPTIONS,
 } from '../../constants/tpo'
 import type { CalendarFilters } from '../../types/tpo'
-import type { CalendarItemKind } from '../../types'
 
 interface FilterBarProps {
   filters: CalendarFilters
@@ -71,10 +71,13 @@ const FilterBar = ({ filters, onChange }: FilterBarProps) => {
           'Item',
           <MultiSelect
             placeholder="Any item"
-            options={(Object.keys(CALENDAR_ITEM_STYLE) as CalendarItemKind[]).map((kind) => ({
-              value: kind,
-              label: CALENDAR_ITEM_STYLE[kind].label,
-            }))}
+            options={[
+              ...(Object.keys(CALENDAR_ITEM_STYLE) as CalendarItemKind[]).map((kind) => ({
+                value: kind as string,
+                label: CALENDAR_ITEM_STYLE[kind].label,
+              })),
+              { value: 'cancelled', label: CANCELLED_STYLE.label },
+            ]}
             value={filters.kinds}
             onChange={(kinds: string[]) => onChange({ ...filters, kinds })}
           />,

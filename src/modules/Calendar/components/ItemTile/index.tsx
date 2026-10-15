@@ -37,7 +37,7 @@ const ItemTile = ({ item, onOpen, showTime, className }: ItemTileProps) => {
         </span>
       )}
       <span className={cn('truncate', style.struck && 'line-through [color:var(--ds-color-text-tertiary)]')}>
-        {item.title}
+        {style.struck ? `Cancelled: ${item.title}` : item.title}
       </span>
     </button>
   )

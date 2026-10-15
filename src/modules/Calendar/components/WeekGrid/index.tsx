@@ -120,7 +120,9 @@ const WeekGrid = ({ week, items, onOpen, onPickDate }: WeekGridProps) => {
                     <span className="block text-[0.625rem] font-semibold uppercase" style={{ color: style.accent }}>
                       {style.label}
                     </span>
-                    <span className="block truncate text-[0.6875rem] font-medium">{item.title}</span>
+                    <span className={cn('block truncate text-[0.6875rem] font-medium', style.struck && 'line-through')}>
+                      {style.struck ? `Cancelled: ${item.title}` : item.title}
+                    </span>
                   </button>
                 )
               })}

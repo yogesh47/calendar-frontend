@@ -1,5 +1,6 @@
 import { differenceInMinutes, format } from 'date-fns'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
+import { cn } from '@/lib/utils'
 import { styleOf } from '../../helpers'
 import type { CalendarItem } from '../../types'
 
@@ -61,7 +62,14 @@ const DayAgenda = ({ day, items, hiddenCount, onOpen }: DayAgendaProps) => (
               <span className="w-1 shrink-0 self-stretch rounded" style={{ backgroundColor: style.accent }} />
 
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{item.title}</span>
+                <span
+                  className={cn(
+                    'block truncate text-sm font-medium',
+                    style.struck && 'line-through [color:var(--ds-color-text-tertiary)]',
+                  )}
+                >
+                  {style.struck ? `Cancelled: ${item.title}` : item.title}
+                </span>
                 <span className="block truncate text-xs [color:var(--ds-color-text-secondary)]">
                   {style.label}
                   {item.venue ? ` · ${item.venue}` : ''}

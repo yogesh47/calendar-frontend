@@ -1,23 +1,44 @@
+import { cn } from '@/lib/utils'
 import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '../../constants'
+import type { CalendarItemKind } from '../../types'
 
-/** The key under the grid, built from the same map the tiles read. */
-const Legend = () => {
-  const entries = [...Object.values(CALENDAR_ITEM_STYLE), CANCELLED_STYLE]
-
-  return (
-    <ul className="flex flex-wrap items-center gap-x-[1rem] gap-y-[0.5rem]">
-      {entries.map((entry) => (
-        <li key={entry.label} className="flex items-center gap-[0.375rem]">
-          <span
-            aria-hidden="true"
-            className="size-[0.625rem] rounded-[0.125rem]"
-            style={{ backgroundColor: entry.accent }}
-          />
-          <span className="text-[0.75rem] text-muted-foreground">{entry.label}</span>
-        </li>
-      ))}
-    </ul>
-  )
+interface LegendProps {
+  selected: string[]
+  onToggle: (kind: string) => void
 }
+
+const ENTRIES = [
+  ...(Object.keys(CALENDAR_ITEM_STYLE) as CalendarItemKind[]).map((kind) => ({
+    key: kind as string,
+    ...CALENDAR_ITEM_STYLE[kind],
+  })),
+  { key: 'cancelled', ...CANCELLED_STYLE },
+]
+
+const Legend = ({ selected, onToggle }: LegendProps) => (
+  <ul className="flex flex-wrap items-center gap-x-[1rem] gap-y-[0.5rem]">
+    {ENTRIES.map((entry) => {
+      const isOn = selected.length === 0 || selected.includes(entry.key)
+
+      return (
+        <li key={entry.key}>
+          <button
+            type="button"
+            aria-pressed={selected.includes(entry.key)}
+            onClick={() => onToggle(entry.key)}
+            className={cn('flex cursor-pointer items-center gap-[0.375rem]', !isOn && 'opacity-40')}
+          >
+            <span
+              aria-hidden="true"
+              className="size-[0.625rem] rounded-[0.125rem]"
+              style={{ backgroundColor: entry.accent }}
+            />
+            <span className="text-[0.75rem] text-muted-foreground">{entry.label}</span>
+          </button>
+        </li>
+      )
+    })}
+  </ul>
+)
 
 export default Legend

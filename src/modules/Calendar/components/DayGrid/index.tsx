@@ -152,7 +152,9 @@ const DayGrid = ({ day, items, onOpen, onPickDate }: DayGridProps) => {
                     {format(new Date(item.startsAt), 'h:mm a')}
                     {item.endsAt ? ` – ${format(new Date(item.endsAt), 'h:mm a')}` : ''}
                   </span>
-                  <span className="block truncate text-sm font-medium">{item.title}</span>
+                  <span className={cn('block truncate text-sm font-medium', style.struck && 'line-through')}>
+                    {style.struck ? `Cancelled: ${item.title}` : item.title}
+                  </span>
                   {item.venue && (
                     <span className="block truncate text-xs [color:var(--ds-color-text-secondary)]">{item.venue}</span>
                   )}

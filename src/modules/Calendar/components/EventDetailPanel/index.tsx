@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { Info } from 'lucide-react'
+import { Info, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import {
@@ -20,6 +20,7 @@ interface EventDetailPanelProps {
   onEdit: () => void
   onCancel: () => void
   onDelete: () => void
+  onDeleteForever: () => void
 }
 
 const Line = ({ label, value }: { label: string; value?: string }) => {
@@ -33,7 +34,7 @@ const Line = ({ label, value }: { label: string; value?: string }) => {
   )
 }
 
-const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete }: EventDetailPanelProps) => {
+const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDeleteForever }: EventDetailPanelProps) => {
   if (!event) return null
 
   const { draft } = event
@@ -57,7 +58,14 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete }: EventD
         ? `Offline · ${draft.venue}`
         : undefined
 
-  const footer = isCancelled ? null : isReminder ? (
+  const footer = isCancelled ? (
+    isMine ? (
+      <Button variant="danger" onClick={onDeleteForever}>
+        <Trash2 className="size-4" />
+        Delete permanently
+      </Button>
+    ) : null
+  ) : isReminder ? (
     <>
       <Button variant="outline" onClick={onDelete}>
         Delete

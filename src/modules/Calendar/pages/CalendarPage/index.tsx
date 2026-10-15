@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import ListView from '../../components/ListView'
@@ -19,7 +19,15 @@ import { countAudience, diffAudience } from '../../services/audience'
 import { deadlineItems } from '../../services/jobs'
 import { newDraftOn } from '../../services/tpoEvents'
 import { onOpenEventRequest } from '../../services/store'
-import { cancelEvent, createEvent, deleteReminder, fetchEvents, openCalendarStream, updateEvent } from '../../services/api'
+import {
+  cancelEvent,
+  createEvent,
+  deleteAllEvents,
+  deleteReminder,
+  fetchEvents,
+  openCalendarStream,
+  updateEvent,
+} from '../../services/api'
 import { changedSummary, itemFromEvent, onlyMinorChanged, rulesFor } from '../../helpers/tpo'
 import { EMPTY_DRAFT, EMPTY_FILTERS, SIGNED_IN_TPO } from '../../constants/tpo'
 import type { CalendarView } from '../../types'
@@ -52,6 +60,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   const [openedId, setOpenedId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<TpoEvent | null>(null)
   const [deleting, setDeleting] = useState<TpoEvent | null>(null)
+  const [purging, setPurging] = useState<TpoEvent | null>(null)
+  const [wiping, setWiping] = useState(false)
   const [toast, setToast] = useState('')
 
   const isTpo = role === 'tpo'
@@ -129,7 +139,13 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
     const seeded = filters.createdByMe ? [] : deadlineItems()
     const all = [...seeded, ...fromEvents]
 
-    return filters.kinds.length ? all.filter((item) => filters.kinds.includes(item.kind)) : all
+    if (!filters.kinds.length) return all
+
+    return all.filter((item) =>
+      item.status === 'cancelled'
+        ? filters.kinds.includes('cancelled')
+        : filters.kinds.includes(item.kind),
+    )
   }, [events, filters, isTpo])
 
   const openCreate = (eventDate: string) =>
@@ -187,6 +203,23 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
     setToast(`Event cancelled. ${event.notifiedCount} students notified.`)
   }
 
+  const confirmWipe = async () => {
+    const { count } = await deleteAllEvents()
+    await refresh()
+    setWiping(false)
+    setOpenedId(null)
+    setToast(count ? `${count} items deleted permanently.` : 'Nothing to delete.')
+  }
+
+  const confirmPurge = async () => {
+    const event = purging as TpoEvent
+    await deleteReminder(event.id)
+    await refresh()
+    setPurging(null)
+    setOpenedId(null)
+    setToast('Event deleted permanently.')
+  }
+
   const confirmDelete = async () => {
     const event = deleting as TpoEvent
     await deleteReminder(event.id)
@@ -217,7 +250,17 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               setMonth(day)
             }}
           />
-          <Legend />
+          <Legend
+            selected={filters.kinds}
+            onToggle={(kind) =>
+              setFilters({
+                ...filters,
+                kinds: filters.kinds.includes(kind)
+                  ? filters.kinds.filter((entry) => entry !== kind)
+                  : [...filters.kinds, kind],
+              })
+            }
+          />
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col gap-3">
@@ -261,6 +304,12 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             </div>
 
             <div className="flex items-center gap-2">
+            {isTpo && (
+              <Button variant="ghost" size="sm" onClick={() => setWiping(true)}>
+                <Trash2 className="size-3.5" />
+                Delete all
+              </Button>
+            )}
             {isTpo && <FilterBar filters={filters} onChange={setFilters} />}
             <div className="flex items-center gap-1 rounded-lg border p-1">
               {VIEWS.map((entry) => (
@@ -354,6 +403,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         onEdit={() => opened && openEdit(opened)}
         onCancel={() => setCancelling(opened)}
         onDelete={() => setDeleting(opened)}
+        onDeleteForever={() => setPurging(opened)}
       />
 
       <CancelDialog
@@ -376,6 +426,22 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         confirmLabel="Delete"
         onBack={() => setDeleting(null)}
         onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        open={wiping}
+        title={`Delete all ${events.length} events and reminders permanently?`}
+        confirmLabel="Delete all"
+        onBack={() => setWiping(false)}
+        onConfirm={confirmWipe}
+      />
+
+      <ConfirmDialog
+        open={Boolean(purging)}
+        title="Delete this cancelled event permanently?"
+        confirmLabel="Delete permanently"
+        onBack={() => setPurging(null)}
+        onConfirm={confirmPurge}
       />
     </div>
   )

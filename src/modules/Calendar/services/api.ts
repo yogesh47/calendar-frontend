@@ -160,6 +160,9 @@ export const cancelEvent = async (eventId: string, reason: string, note: string)
 export const deleteReminder = (eventId: string): Promise<void> =>
   ask<void>(`/calendar/events/${eventId}`, { method: 'DELETE' })
 
+export const deleteAllEvents = (): Promise<{ count: number }> =>
+  ask<{ count: number }>('/calendar/events?confirm=yes', { method: 'DELETE' })
+
 export const fetchNotifications = (): Promise<ApiNotification[]> => ask<ApiNotification[]>('/calendar/notifications')
 
 export const readNotification = (notificationId: string): Promise<void> =>
