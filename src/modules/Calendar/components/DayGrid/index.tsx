@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { format, isSameDay, isToday } from 'date-fns'
+import { format, isToday } from 'date-fns'
 import { cn } from '@/lib/utils'
 import ItemTile from '../ItemTile'
 import { styleOf } from '../../helpers'
+import { coversDay, spansDays } from '../../services'
 import { WEEK_HOURS } from '../../constants'
 import type { CalendarItem } from '../../types'
 
@@ -52,9 +53,9 @@ const lanesFor = (items: CalendarItem[]): Map<string, { lane: number; lanes: num
 
 const DayGrid = ({ day, items, onOpen, onPickDate }: DayGridProps) => {
   const scroller = useRef<HTMLDivElement>(null)
-  const onThisDay = items.filter((item) => isSameDay(new Date(item.startsAt), day))
-  const allDay = onThisDay.filter((item) => item.isAllDay)
-  const timed = onThisDay.filter((item) => !item.isAllDay)
+  const onThisDay = items.filter((item) => coversDay(item, day))
+  const allDay = onThisDay.filter((item) => item.isAllDay || spansDays(item))
+  const timed = onThisDay.filter((item) => !item.isAllDay && !spansDays(item))
   const lanes = lanesFor(timed)
 
   const [now, setNow] = useState(new Date())

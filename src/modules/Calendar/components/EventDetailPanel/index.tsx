@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { Info, Trash2 } from 'lucide-react'
+import { ExternalLink, Info, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import {
@@ -43,17 +43,24 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDelete
   const isReminder = draft.eventType === 'my_reminder'
   const isCancelled = Boolean(event.cancelledAt)
   const day = draft.eventDate ? new Date(`${draft.eventDate}T00:00:00`) : null
+  const lastDay = draft.endDate && draft.endDate !== draft.eventDate ? new Date(`${draft.endDate}T00:00:00`) : null
   const isPast = Boolean(day && day.getTime() < new Date().setHours(0, 0, 0, 0))
 
+  const clock = (value: string): string => format(new Date(`2000-01-01T${value}:00`), 'h:mm a')
+
   const timeLine = rules.needsTime
-    ? `${draft.startTime} – ${draft.endTime}`
+    ? `${clock(draft.startTime)} – ${clock(draft.endTime)}`
     : draft.startTime
-      ? draft.startTime
+      ? clock(draft.startTime)
       : 'All day'
+
+  const isLink = (value: string): boolean => value.startsWith('http://') || value.startsWith('https://')
 
   const venueLine =
     draft.mode === 'online'
-      ? `Online · ${draft.onlinePlatform}`
+      ? isLink(draft.onlinePlatform)
+        ? 'Online'
+        : `Online · ${draft.onlinePlatform}`
       : draft.mode === 'offline'
         ? `Offline · ${draft.venue}`
         : undefined
@@ -100,7 +107,16 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDelete
         </h3>
 
         <div className="space-y-1.5">
-          <Line label="Date" value={day ? format(day, 'EEE, d MMM yyyy') : undefined} />
+          <Line
+            label="Date"
+            value={
+              day
+                ? lastDay
+                  ? `${format(day, 'EEE, d MMM yyyy')} → ${format(lastDay, 'EEE, d MMM yyyy')}`
+                  : format(day, 'EEE, d MMM yyyy')
+                : undefined
+            }
+          />
           <Line label="Time" value={isReminder && !draft.startTime ? 'All day' : timeLine} />
           <Line label="Venue" value={venueLine} />
           <Line label="Company" value={draft.company || undefined} />
@@ -114,6 +130,18 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDelete
           {isReminder && <Line label="Note" value={draft.note || undefined} />}
         </div>
 
+        {draft.mode === 'online' && isLink(draft.onlinePlatform) && (
+          <a
+            href={draft.onlinePlatform}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex w-fit items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium hover:[background-color:var(--ds-color-bg-muted)]"
+          >
+            Open meeting link
+            <ExternalLink className="size-3.5" />
+          </a>
+        )}
+
         {draft.linkedJob && (
           <div className="rounded-md border p-3">
             <p className="text-xs font-semibold uppercase [color:var(--ds-color-text-secondary)]">Linked job</p>
@@ -125,9 +153,10 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDelete
                 href={draft.linkedJob.url}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm underline [color:var(--ds-color-text-link)]"
+                className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium hover:[background-color:var(--ds-color-bg-muted)]"
               >
-                {draft.linkedJob.url}
+                Open job
+                <ExternalLink className="size-3.5" />
               </a>
             )}
           </div>

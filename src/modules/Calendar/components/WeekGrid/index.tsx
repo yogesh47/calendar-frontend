@@ -2,6 +2,7 @@ import { eachDayOfInterval, endOfWeek, format, isSameDay, isToday, startOfWeek }
 import { cn } from '@/lib/utils'
 import ItemTile from '../ItemTile'
 import { styleOf } from '../../helpers'
+import { coversDay, spansDays } from '../../services'
 import { WEEK_HOURS } from '../../constants'
 import type { CalendarItem } from '../../types'
 
@@ -30,10 +31,10 @@ const WeekGrid = ({ week, items, onOpen, onPickDate }: WeekGridProps) => {
   })
 
   const allDayOn = (day: Date) =>
-    items.filter((item) => item.isAllDay && isSameDay(new Date(item.startsAt), day))
+    items.filter((item) => (item.isAllDay || spansDays(item)) && coversDay(item, day))
 
   const timedOn = (day: Date) =>
-    items.filter((item) => !item.isAllDay && isSameDay(new Date(item.startsAt), day))
+    items.filter((item) => !item.isAllDay && !spansDays(item) && isSameDay(new Date(item.startsAt), day))
 
   const top = (item: CalendarItem): number =>
     ((minutesFrom(item.startsAt) - WEEK_HOURS.from * 60) / 60) * ROW_HEIGHT
