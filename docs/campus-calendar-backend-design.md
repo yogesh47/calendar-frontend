@@ -603,7 +603,6 @@ sirf edit par dobara nikalti hai.
 | `event_date` | Date | no | org ke timezone ka din |
 | `start_at` | DateTime(tz) | yes | all-day par null |
 | `end_at` | DateTime(tz) | yes | all-day par null |
-| `is_all_day` | Boolean | no | default `false` |
 | `mode` | String | yes | `offline` / `online` |
 | `venue` | String(200) | yes | mode=offline par required |
 | `online_platform` | String(200) | yes | mode=online par required |
@@ -617,10 +616,17 @@ sirf edit par dobara nikalti hai.
 | `cancel_note` | String(200) | yes | reason=other par required |
 | `cancelled_by` | UUID | yes | |
 | `cancelled_at` | DateTime(tz) | yes | |
-| `notified_count` | Integer | no | default 0 |
 | `created_by` | UUID | no | **sirf yahi edit/cancel kar sakta hai** |
 | `created_at` | DateTime(tz) | no | |
 | `updated_at` | DateTime(tz) | no | |
+
+> **`is_all_day` column nahi rakha.** Drawer me "All day" ka koi option nahi hai —
+> TPO sirf type chunta hai, aur sirf `deadline` par time poochha nahi jaata. Response
+> me `event_type == "deadline"` se bana kar bhej dete hain.
+
+> **"X students notified" ka number yahan nahi rakha.** Wo us event ki
+> `calendar_event_recipient` rows gin kar aata hai — alag column rakhne par
+> count aur asli list alag ho sakte the.
 
 ### `calendar_event_audience`
 
@@ -739,7 +745,6 @@ class CalendarEvent(Base):
     event_date = Column(Date, nullable=False)
     start_at = Column(DateTime(timezone=True), nullable=True)
     end_at = Column(DateTime(timezone=True), nullable=True)
-    is_all_day = Column(Boolean, nullable=False, default=False)
 
     mode = Column(String, nullable=True)
     venue = Column(String(200), nullable=True)
@@ -758,7 +763,6 @@ class CalendarEvent(Base):
     cancelled_by = Column(UUID(as_uuid=True), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
-    notified_count = Column(Integer, nullable=False, default=0)
     created_by = Column(UUID(as_uuid=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -999,7 +1003,7 @@ class CalendarItemOut(BaseModel):
     event_date: date
     start_at: Optional[datetime]   # UTC, 'Z' ke saath
     end_at: Optional[datetime]
-    is_all_day: bool
+    is_all_day: bool               # column nahi — event_type == 'deadline' se banta hai
     mode: Optional[str]
     venue: Optional[str]
     company_name: Optional[str]
@@ -1070,9 +1074,10 @@ def list_items(db, org_id, viewer_id, viewer_role, date_from, date_to, filters):
     Student: sirf wahi events jinme uska recipient row 'active' ya 'removed' hai
     """
 
-def create_event(db, org_id, tpo_id, payload) -> CalendarEvent:
+def create_event(db, org_id, tpo_id, payload) -> tuple[CalendarEvent, int]:
     """Event banao, audience save karo, recipients freeze karo,
-       notification job queue karo, nudges schedule karo."""
+       notification job queue karo, nudges schedule karo.
+       Doosra value = kitne recipient bane, 'X students notified' ke liye."""
 
 def update_event(db, event, tpo_id, payload, notify_minor: bool):
     """Ownership check. event_type lock. past event block.
@@ -1262,11 +1267,11 @@ def create_event(
     user_info: dict = Depends(get_userinfo_from_token),
     db: Session = Depends(get_db),                                   # apni service ka session
 ):
-    event = calendar_service.create_event(db, user_info, payload)   # commit yahin
+    event, notified_count = calendar_service.create_event(db, user_info, payload)   # commit yahin
     background_task.add_task(                                        # notification baad me
         calendar_notification_service.notify_created, request, event, user_info
     )
-    return {"event_id": event.event_id, "notified_count": event.notified_count}
+    return {"event_id": event.event_id, "notified_count": notified_count}
 ```
 
 **Pakka niyam:** DB commit pehle, `add_task` baad me. Notification service band

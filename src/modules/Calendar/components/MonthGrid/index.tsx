@@ -14,6 +14,7 @@ type MonthGridProps = {
   month: Date
   items: CalendarItem[]
   onOpen?: (item: CalendarItem) => void
+  onPickDate?: (day: Date) => void
 }
 
 /**
@@ -21,7 +22,7 @@ type MonthGridProps = {
  * as the user pages through. Days outside the month stay visible but dimmed —
  * an event on the 1st is easier to find when the week it sits in is whole.
  */
-const MonthGrid = ({ month, items, onOpen }: MonthGridProps) => {
+const MonthGrid = ({ month, items, onOpen, onPickDate }: MonthGridProps) => {
   const days = eachDayOfInterval({
     start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
@@ -50,15 +51,17 @@ const MonthGrid = ({ month, items, onOpen }: MonthGridProps) => {
                 !isSameMonth(day, month) && 'bg-muted/30',
               )}
             >
-              <span
+              <button
+                type="button"
+                onClick={() => onPickDate?.(day)}
                 className={cn(
-                  'self-start rounded-full px-[0.375rem] text-[0.75rem] font-semibold',
+                  'self-start rounded-full px-[0.375rem] text-[0.75rem] font-semibold hover:bg-muted',
                   isSameMonth(day, month) ? 'text-foreground' : 'text-muted-foreground',
                   isToday(day) && 'bg-brand text-brand-foreground',
                 )}
               >
                 {format(day, 'd')}
-              </span>
+              </button>
 
               {shown.map((item) => (
                 <ItemTile key={item.id} item={item} onOpen={onOpen} />

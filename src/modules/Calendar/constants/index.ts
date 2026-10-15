@@ -42,21 +42,21 @@ export const CALENDAR_ITEM_STYLE: Record<
   CalendarItemKind,
   { label: string; accent: string; surface: string; dashed?: boolean }
 > = {
-  event: { label: 'Event', accent: 'var(--cal-event)', surface: 'var(--cal-event-soft)' },
-  deadline: { label: 'Deadline', accent: 'var(--cal-deadline)', surface: 'var(--cal-deadline-soft)' },
+  event: { label: 'Event', accent: 'var(--ds-color-calendar-event)', surface: 'var(--ds-color-calendar-event-subtle)' },
+  deadline: { label: 'Deadline', accent: 'var(--ds-color-calendar-deadline)', surface: 'var(--ds-color-calendar-deadline-subtle)' },
   reminder: {
     label: 'My Reminder',
-    accent: 'var(--cal-reminder)',
-    surface: 'var(--cal-reminder-soft)',
+    accent: 'var(--ds-color-calendar-reminder)',
+    surface: 'var(--ds-color-calendar-reminder-subtle)',
     dashed: true,
   },
-  nudge: { label: 'Reminder', accent: 'var(--cal-nudge)', surface: 'var(--cal-nudge-soft)' },
+  nudge: { label: 'Reminder', accent: 'var(--ds-color-calendar-nudge)', surface: 'var(--ds-color-calendar-nudge-subtle)' },
 }
 
 export const CANCELLED_STYLE = {
   label: 'Cancelled',
-  accent: 'var(--cal-cancelled)',
-  surface: 'var(--cal-cancelled-soft)',
+  accent: 'var(--ds-color-calendar-cancelled)',
+  surface: 'var(--ds-color-calendar-cancelled-subtle)',
 } as const
 
 /** An event's own type is what its tile says, in place of the generic "Event". */

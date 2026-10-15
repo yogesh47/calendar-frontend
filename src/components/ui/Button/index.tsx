@@ -1,38 +1,119 @@
-import * as React from 'react'
-import { Slot } from '@radix-ui/react-slot'
-import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
+import * as React from 'react';
+import { Slot } from '@radix-ui/react-slot';
+import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/Spinner';
+import { buttonVariants, ICON_ONLY, HOVER_EFFECT, SPINNER_SIZE } from './Button.constants';
+import type { ButtonProps } from './Button.types';
 
-const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent font-semibold select-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0',
-  {
-    variants: {
-      variant: {
-        brand: 'bg-brand text-brand-foreground hover:opacity-90',
-        outline: 'border-[color:var(--ds-color-border-default)] bg-white hover:bg-muted',
-        ghost: 'hover:bg-muted',
-        destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
-      },
-      size: {
-        sm: 'h-8 px-3 text-[0.8125rem]',
-        md: 'h-10 px-4 text-sm',
-        icon: 'size-9',
-      },
+export * from './Button.constants';
+export type { ButtonHoverEffect, ButtonProps } from './Button.types';
+
+interface Ripple {
+  x: number;
+  y: number;
+  size: number;
+  id: number;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      className,
+      variant = 'primary',
+      size = 'md',
+      asChild = false,
+      leftIcon,
+      rightIcon,
+      iconOnly = false,
+      loading = false,
+      fullWidth = false,
+      hoverEffect = 'none',
+      ripple = false,
+      disabled,
+      type,
+      children,
+      onPointerDown,
+      ...props
     },
-    defaultVariants: { variant: 'brand', size: 'md' },
+    ref,
+  ) => {
+    const [ripples, setRipples] = React.useState<Ripple[]>([]);
+    const rippleId = React.useRef(0);
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (ripple && !disabled && !loading) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        setRipples((r) => [
+          ...r,
+          {
+            id: (rippleId.current += 1),
+            size,
+            x: e.clientX - rect.left - size / 2,
+            y: e.clientY - rect.top - size / 2,
+          },
+        ]);
+      }
+      onPointerDown?.(e);
+    };
+
+    const classes = cn(
+      buttonVariants({ variant, size }),
+      iconOnly && size && size !== 'icon' && ICON_ONLY[size],
+      fullWidth && 'w-full',
+      HOVER_EFFECT[hoverEffect],
+      ripple && 'relative overflow-hidden',
+      loading && 'relative',
+      className,
+    );
+
+    if (asChild) {
+      return <Slot ref={ref} className={classes} {...props}>{children}</Slot>;
+    }
+
+    return (
+      <button
+        ref={ref}
+        type={type ?? 'button'}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
+        className={classes}
+        onPointerDown={handlePointerDown}
+        {...props}
+      >
+        {ripple &&
+          ripples.map((r) => (
+            <span
+              key={r.id}
+              aria-hidden
+              className="pointer-events-none absolute rounded-full [background-color:currentColor]"
+              style={{
+                left: r.x,
+                top: r.y,
+                width: r.size,
+                height: r.size,
+                animation: 'ds-ripple 600ms var(--ds-ease-standard) forwards',
+              }}
+              onAnimationEnd={() => setRipples((list) => list.filter((x) => x.id !== r.id))}
+            />
+          ))}
+        {loading && (
+          <span className="absolute inline-grid place-items-center">
+            <Spinner size={SPINNER_SIZE[size ?? 'md']} />
+          </span>
+        )}
+        <span className={cn('inline-flex items-center justify-center gap-2', loading && 'invisible')}>
+          {leftIcon && <span className="inline-grid place-items-center">{leftIcon}</span>}
+          {!iconOnly && children}
+          {iconOnly && !leftIcon && !rightIcon && (
+            <span className="inline-grid place-items-center">{children}</span>
+          )}
+          {rightIcon && <span className="inline-grid place-items-center">{rightIcon}</span>}
+        </span>
+      </button>
+    );
   },
-)
+);
+Button.displayName = 'Button';
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> & { asChild?: boolean }
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button'
-
-    return <Comp ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />
-  },
-)
-Button.displayName = 'Button'
-
-export { buttonVariants }
+export { Button };

@@ -29,13 +29,13 @@ const ItemTile = ({ item, onOpen, className }: ItemTileProps) => {
         className,
       )}
       style={{
-        backgroundColor: `hsl(${style.surface})`,
-        borderColor: `hsl(${style.accent})`,
+        backgroundColor: style.surface,
+        borderColor: style.accent,
       }}
     >
       <span
         className="shrink-0 text-[0.625rem] font-semibold uppercase tracking-[0.02em]"
-        style={{ color: `hsl(${style.accent})` }}
+        style={{ color: style.accent }}
       >
         {style.label}
       </span>

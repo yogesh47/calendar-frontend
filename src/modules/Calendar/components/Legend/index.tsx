@@ -11,7 +11,7 @@ const Legend = () => {
           <span
             aria-hidden="true"
             className="size-[0.625rem] rounded-[0.125rem]"
-            style={{ backgroundColor: `hsl(${entry.accent})` }}
+            style={{ backgroundColor: entry.accent }}
           />
           <span className="text-[0.75rem] text-muted-foreground">{entry.label}</span>
         </li>
