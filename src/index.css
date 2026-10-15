@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 96%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --primary: 280 57% 32%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --brand: 280 57% 32%;
+    --brand-foreground: 0 0% 100%;
+    --radius: 0.625rem;
+
+    /* Named the way Student 2.0 names them, so the module keeps working there. */
+    --ds-color-border-default: #e2e8f0;
+    --ds-color-text-placeholder: #94a3b8;
+
+    /*
+      The five item kinds from the UI spec's table, as tokens rather than class
+      names. The spec gives a colour AND a text label for each, and the rule is
+      that the label is never dropped — colour alone is not allowed to carry the
+      meaning. See CALENDAR_ITEM_STYLE for where these are read.
+    */
+    --cal-event: 217 91% 60%;        /* TPO Event — blue */
+    --cal-event-soft: 214 95% 97%;
+    --cal-deadline: 0 72% 51%;       /* Application Deadline — red outline */
+    --cal-deadline-soft: 0 86% 97%;
+    --cal-reminder: 215 16% 47%;     /* My Reminder — slate, dashed */
+    --cal-reminder-soft: 210 40% 98%;
+    --cal-nudge: 271 81% 56%;        /* Nudge — purple */
+    --cal-nudge-soft: 270 100% 98%;
+    --cal-cancelled: 215 20% 65%;    /* Cancelled — muted, struck through */
+    --cal-cancelled-soft: 210 40% 98%;
+  }
+
+  html {
+    font-family: 'Work Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
