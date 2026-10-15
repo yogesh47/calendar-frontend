@@ -48,6 +48,7 @@ interface EventDrawerProps {
   canDeleteReminder?: boolean
   dayEntries: DayEntry[]
   onClose: () => void
+  onOpenJob?: () => void
   onCancelEvent?: () => void
   onDeleteReminder?: () => void
   onSave: (draft: EventDraft) => void
@@ -83,6 +84,7 @@ const EventDrawer = ({
   canDeleteReminder,
   dayEntries,
   onClose,
+  onOpenJob,
   onCancelEvent,
   onDeleteReminder,
   onSave,
@@ -580,9 +582,22 @@ const EventDrawer = ({
                   <div className="flex gap-2">
                     <Link2 className="mt-0.5 size-3.5 shrink-0 [color:var(--ds-color-text-secondary)]" />
                     <div>
-                      <p className="text-sm font-medium">
-                        {draft.linkedJob.kind === 'campus' ? draft.linkedJob.campusJob : draft.linkedJob.title}
-                      </p>
+                      {draft.linkedJob.kind === 'campus' ? (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto justify-start p-0 text-sm"
+                          onClick={onOpenJob}
+                        >
+                          {draft.linkedJob.campusJob}
+                        </Button>
+                      ) : (
+                        <Button asChild variant="link" className="h-auto justify-start p-0 text-sm">
+                          <a href={draft.linkedJob.url} target="_blank" rel="noreferrer">
+                            {draft.linkedJob.title}
+                          </a>
+                        </Button>
+                      )}
                       <p className="text-sm [color:var(--ds-color-text-secondary)]">
                         {draft.linkedJob.kind === 'campus' ? 'Campus job' : draft.linkedJob.url}
                       </p>

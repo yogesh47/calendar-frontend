@@ -10,10 +10,12 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 interface DayJumpProps {
   date: string
+  label?: string
+  className?: string
   onDateChange: (date: string) => void
 }
 
-const DayJump = ({ date, onDateChange }: DayJumpProps) => {
+const DayJump = ({ date, label, className, onDateChange }: DayJumpProps) => {
   const day = new Date(`${date}T00:00:00`)
   const [open, setOpen] = useState(false)
   const [view, setView] = useState(day)
@@ -33,9 +35,13 @@ const DayJump = ({ date, onDateChange }: DayJumpProps) => {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-sm font-semibold hover:[background-color:var(--ds-color-bg-muted)]"
+          className={cn(
+            'flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-sm font-semibold',
+            'hover:[background-color:var(--ds-color-bg-muted)]',
+            className,
+          )}
         >
-          {format(day, 'EEE, MMM d, yyyy')}
+          {label ?? format(day, 'EEE, MMM d, yyyy')}
           <ChevronDown className="size-3.5" />
         </button>
       </PopoverTrigger>

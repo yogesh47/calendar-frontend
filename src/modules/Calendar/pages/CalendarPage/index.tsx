@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import ListView from '../../components/ListView'
-import DayGrid from '../../components/DayGrid'
+import DaysGrid from '../../components/DaysGrid'
 import MonthGrid from '../../components/MonthGrid'
+import DayJump from '../../components/DayJump'
 import MiniCalendar from '../../components/MiniCalendar'
-import WeekGrid from '../../components/WeekGrid'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import Legend from '../../components/Legend'
 import FilterBar from '../../components/FilterBar'
 import EventDrawer from '../../components/EventDrawer'
@@ -50,6 +51,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   const navigate = useNavigate()
   const [month, setMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(new Date())
+  const [dayCount, setDayCount] = useState(1)
   const [view, setView] = useState<CalendarView>('month')
   const [events, setEvents] = useState<TpoEvent[]>([])
   const [filters, setFilters] = useState<CalendarFilters>(EMPTY_FILTERS)
@@ -88,7 +90,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
   const goBack = () => {
     if (view === 'day') {
-      const day = subDays(selectedDay, 1)
+      const day = subDays(selectedDay, dayCount)
       setSelectedDay(day)
       setMonth(day)
       return
@@ -98,7 +100,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
   const goForward = () => {
     if (view === 'day') {
-      const day = addDays(selectedDay, 1)
+      const day = addDays(selectedDay, dayCount)
       setSelectedDay(day)
       setMonth(day)
       return
@@ -108,9 +110,16 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
   const stepName = view === 'day' ? 'day' : view === 'week' ? 'week' : 'month'
 
+  const shownDays =
+    view === 'week'
+      ? Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(month, { weekStartsOn: 1 }), index))
+      : Array.from({ length: dayCount }, (_, index) => addDays(selectedDay, index))
+
   const rangeLabel =
     view === 'day'
-      ? format(selectedDay, 'MMMM d, yyyy')
+      ? dayCount === 1
+        ? format(selectedDay, 'MMMM d, yyyy')
+        : `${format(selectedDay, 'MMMM d')}–${format(addDays(selectedDay, dayCount - 1), 'd, yyyy')}`
       : view === 'week'
         ? `${format(startOfWeek(month, { weekStartsOn: 1 }), 'd MMM')} – ${format(endOfWeek(month, { weekStartsOn: 1 }), 'd MMM yyyy')}`
         : format(month, 'MMMM yyyy')
@@ -248,6 +257,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
           <MiniCalendar
             month={month}
             selected={selectedDay}
+            rangeStart={view === 'week' ? startOfWeek(month, { weekStartsOn: 1 }) : selectedDay}
+            rangeDays={view === 'week' ? 7 : view === 'day' ? dayCount : 1}
             onMonthChange={setMonth}
             onPick={(day) => {
               setSelectedDay(day)
@@ -277,16 +288,6 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
                 </Button>
               )}
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setMonth(new Date())
-                  setSelectedDay(new Date())
-                }}
-              >
-                Today
-              </Button>
-              <Button
                 variant="ghost"
                 size="sm"
                 iconOnly
@@ -304,7 +305,16 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               >
                 <ChevronRight className="size-4" />
               </Button>
-              <span className="text-base font-semibold">{rangeLabel}</span>
+              <DayJump
+                date={format(selectedDay, 'yyyy-MM-dd')}
+                label={rangeLabel}
+                className="text-base"
+                onDateChange={(value) => {
+                  const picked = new Date(`${value}T00:00:00`)
+                  setSelectedDay(picked)
+                  setMonth(picked)
+                }}
+              />
             </div>
 
             <div className="flex items-center gap-2">
@@ -316,31 +326,80 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             )}
             {isTpo && <FilterBar filters={filters} onChange={setFilters} />}
             <div className="flex items-center gap-1 rounded-lg border p-1">
-              {VIEWS.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  onClick={() => setView(entry.id)}
-                  className={cn(
-                    'cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors',
-                    view === entry.id
-                      ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
-                      : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
-                  )}
-                >
-                  {entry.label}
-                </button>
-              ))}
+              {VIEWS.map((entry) =>
+                entry.id === 'day' ? (
+                  <Popover key={entry.id}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          'flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 text-sm font-medium transition-colors',
+                          view === 'day'
+                            ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
+                            : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
+                        )}
+                      >
+                        {dayCount === 1 ? 'Day' : `${dayCount} days`}
+                        <ChevronDown className="size-3.5" />
+                      </button>
+                    </PopoverTrigger>
+
+                    <PopoverContent align="start" className="w-40 p-1 [background-color:var(--ds-color-bg-surface)]">
+                      {[1, 2, 3, 4, 5, 6, 7].map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => {
+                            setDayCount(count)
+                            setView('day')
+                          }}
+                          className={cn(
+                            'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
+                            'hover:[background-color:var(--ds-color-bg-muted)]',
+                          )}
+                        >
+                          <Check
+                            className={cn(
+                              'size-4',
+                              view === 'day' && dayCount === count
+                                ? '[color:var(--ds-color-brand)]'
+                                : 'opacity-0',
+                            )}
+                          />
+                          {count === 1 ? '1 day' : `${count} days`}
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => setView(entry.id)}
+                    className={cn(
+                      'cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors',
+                      view === entry.id
+                        ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
+                        : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
+                    )}
+                  >
+                    {entry.label}
+                  </button>
+                ),
+              )}
             </div>
             </div>
           </div>
 
-          {view === 'day' && (
-            <DayGrid
-              day={selectedDay}
+          {(view === 'day' || view === 'week') && (
+            <DaysGrid
+              days={shownDays}
               items={visible}
               onOpen={(item) => setOpenedId(item.id)}
-              onPickDate={isTpo ? (day) => openCreate(format(day, 'yyyy-MM-dd')) : undefined}
+              onPickDate={(day) => {
+                setSelectedDay(day)
+                if (isTpo) openCreate(format(day, 'yyyy-MM-dd'))
+              }}
             />
           )}
           {view === 'month' && (
@@ -356,14 +415,6 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             />
           )}
           {view === 'list' && <ListView month={month} items={visible} onOpen={(item) => setOpenedId(item.id)} />}
-          {view === 'week' && (
-            <WeekGrid
-              week={month}
-              items={visible}
-              onOpen={(item) => setOpenedId(item.id)}
-              onPickDate={isTpo ? (day) => openCreate(format(day, 'yyyy-MM-dd')) : undefined}
-            />
-          )}
         </section>
       </div>
 
@@ -377,6 +428,10 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         open={drawer.open}
         initial={drawer.draft}
         isEdit={Boolean(drawer.editing)}
+        onOpenJob={() => {
+          setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
+          navigate(`/${role}/jobs`)
+        }}
         canCancelEvent={Boolean(
           drawer.editing &&
             !drawer.editing.cancelledAt &&
@@ -422,7 +477,10 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
       <EventDetailPanel
         event={opened}
-        onOpenJob={() => navigate(`/${role}/jobs`)}
+        onOpenJob={() => {
+          setOpenedId(null)
+          navigate(`/${role}/jobs`)
+        }}
         onClose={() => setOpenedId(null)}
         onEdit={() => opened && openEdit(opened)}
         onCancel={() => setCancelling(opened)}
