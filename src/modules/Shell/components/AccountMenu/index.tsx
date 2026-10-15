@@ -32,7 +32,7 @@ const AccountMenu = ({ user, onSignOut }: AccountMenuProps) => (
       </button>
     </PopoverTrigger>
 
-    <PopoverContent align="end" className="w-[17rem] p-0">
+    <PopoverContent hideWhenDetached collisionPadding={8} align="end" className="w-[17rem] p-0">
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <Avatar className="size-10">
           <AvatarFallback>{initialsOf(user.name)}</AvatarFallback>

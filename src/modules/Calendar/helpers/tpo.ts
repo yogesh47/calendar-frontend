@@ -110,7 +110,7 @@ export const itemFromEvent = (event: TpoEvent): CalendarItem => {
     kind,
     title: draft.title,
     startsAt: instant(draft.eventDate, draft.startTime),
-    endsAt: rules.needsTime ? instant(draft.eventDate, draft.endTime) : undefined,
+    endsAt: rules.needsTime ? instant(draft.endDate || draft.eventDate, draft.endTime) : undefined,
     isAllDay: !rules.needsTime && !draft.startTime,
     eventType: kind === 'event' ? TILE_EVENT_TYPE[draft.eventType] : undefined,
     status: event.cancelledAt ? 'cancelled' : 'active',

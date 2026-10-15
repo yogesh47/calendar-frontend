@@ -17,6 +17,7 @@ type ApiEvent = {
   title: string
   company: string | null
   event_date: string
+  end_date: string | null
   start_time: string | null
   end_time: string | null
   mode: string | null
@@ -79,6 +80,7 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
     title: entry.title,
     company: entry.company ?? '',
     eventDate: entry.event_date,
+    endDate: entry.end_date ?? entry.event_date,
     startTime: entry.start_time ?? '',
     endTime: entry.end_time ?? '',
     mode: (entry.mode as EventDraft['mode']) ?? '',
@@ -110,6 +112,7 @@ const toPayload = (draft: EventDraft) => ({
   title: draft.title,
   company: draft.company || null,
   event_date: draft.eventDate,
+  end_date: draft.endDate || draft.eventDate,
   start_time: draft.startTime || null,
   end_time: draft.endTime || null,
   mode: draft.mode || null,

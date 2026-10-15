@@ -26,14 +26,17 @@ export const eventSchema = yup.object({
   startTime: yup.string().test('start-needed', 'Start time is required.', function (value) {
     return !needsTime(this.parent.eventType) || Boolean(value)
   }),
+  endDate: yup.string(),
   endTime: yup
     .string()
     .test('end-needed', 'End time is required.', function (value) {
       return !needsTime(this.parent.eventType) || Boolean(value)
     })
-    .test('end-after-start', 'End time must be after start time.', function (value) {
-      if (!needsTime(this.parent.eventType) || !value || !this.parent.startTime) return true
-      return value > this.parent.startTime
+    .test('end-after-start', 'End must be after the start.', function (value) {
+      const { eventType, eventDate, startTime, endDate } = this.parent
+      if (!needsTime(eventType) || !value || !startTime || !eventDate) return true
+
+      return `${endDate || eventDate}T${value}` > `${eventDate}T${startTime}`
     }),
   mode: yup.string().test('mode-needed', 'Select a mode.', function (value) {
     return !needsMode(this.parent.eventType) || Boolean(value)

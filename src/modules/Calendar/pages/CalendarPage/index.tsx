@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addMonths, addWeeks, endOfWeek, format, startOfWeek, subMonths, subWeeks } from 'date-fns'
+import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import ListView from '../../components/ListView'
+import DayGrid from '../../components/DayGrid'
 import MonthGrid from '../../components/MonthGrid'
+import MiniCalendar from '../../components/MiniCalendar'
 import WeekGrid from '../../components/WeekGrid'
 import Legend from '../../components/Legend'
 import FilterBar from '../../components/FilterBar'
@@ -13,7 +15,6 @@ import CancelDialog from '../../components/CancelDialog'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EventDetailPanel from '../../components/EventDetailPanel'
 import ReviewChangesDialog from '../../components/ReviewChangesDialog'
-import { fetchCalendarItems } from '../../services'
 import { countAudience, diffAudience } from '../../services/audience'
 import { deadlineItems } from '../../services/jobs'
 import { newDraftOn } from '../../services/tpoEvents'
@@ -21,25 +22,25 @@ import { onOpenEventRequest } from '../../services/store'
 import { cancelEvent, createEvent, deleteReminder, fetchEvents, openCalendarStream, updateEvent } from '../../services/api'
 import { changedSummary, itemFromEvent, onlyMinorChanged, rulesFor } from '../../helpers/tpo'
 import { EMPTY_DRAFT, EMPTY_FILTERS, SIGNED_IN_TPO } from '../../constants/tpo'
-import type { CalendarItem, CalendarView } from '../../types'
+import type { CalendarView } from '../../types'
 import type { CalendarFilters, CancelReason, EventDraft, TpoEvent } from '../../types/tpo'
 
 const VIEWS: { id: CalendarView; label: string }[] = [
-  { id: 'month', label: 'Month' },
+  { id: 'day', label: 'Day' },
   { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
   { id: 'list', label: 'List' },
 ]
 
 interface CalendarPageProps {
   title?: string
   role?: 'tpo' | 'student'
-  onSignOut?: () => void
 }
 
-const CalendarPage = ({ title = 'Campus Calendar', role = 'student', onSignOut }: CalendarPageProps) => {
+const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarPageProps) => {
   const [month, setMonth] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState(new Date())
   const [view, setView] = useState<CalendarView>('month')
-  const [items, setItems] = useState<CalendarItem[]>([])
   const [events, setEvents] = useState<TpoEvent[]>([])
   const [filters, setFilters] = useState<CalendarFilters>(EMPTY_FILTERS)
   const [drawer, setDrawer] = useState<{ open: boolean; draft: EventDraft; editing: TpoEvent | null }>({
@@ -56,10 +57,6 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student', onSignOut }
   const isTpo = role === 'tpo'
 
   useEffect(() => {
-    fetchCalendarItems().then(setItems)
-  }, [])
-
-  useEffect(() => {
     refresh()
     return openCalendarStream(refresh)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,6 +71,35 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student', onSignOut }
   }, [toast])
 
   const refresh = async () => setEvents(await fetchEvents())
+
+  const goBack = () => {
+    if (view === 'day') {
+      const day = subDays(selectedDay, 1)
+      setSelectedDay(day)
+      setMonth(day)
+      return
+    }
+    setMonth(view === 'week' ? subWeeks(month, 1) : subMonths(month, 1))
+  }
+
+  const goForward = () => {
+    if (view === 'day') {
+      const day = addDays(selectedDay, 1)
+      setSelectedDay(day)
+      setMonth(day)
+      return
+    }
+    setMonth(view === 'week' ? addWeeks(month, 1) : addMonths(month, 1))
+  }
+
+  const stepName = view === 'day' ? 'day' : view === 'week' ? 'week' : 'month'
+
+  const rangeLabel =
+    view === 'day'
+      ? format(selectedDay, 'MMMM d, yyyy')
+      : view === 'week'
+        ? `${format(startOfWeek(month, { weekStartsOn: 1 }), 'd MMM')} – ${format(endOfWeek(month, { weekStartsOn: 1 }), 'd MMM yyyy')}`
+        : format(month, 'MMMM yyyy')
 
   const opened = events.find((event) => event.id === openedId) ?? null
 
@@ -100,11 +126,11 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student', onSignOut }
       )
       .map(itemFromEvent)
 
-    const seeded = filters.createdByMe ? [] : [...(isTpo ? [] : items), ...deadlineItems()]
+    const seeded = filters.createdByMe ? [] : deadlineItems()
     const all = [...seeded, ...fromEvents]
 
     return filters.kinds.length ? all.filter((item) => filters.kinds.includes(item.kind)) : all
-  }, [events, items, filters, isTpo])
+  }, [events, filters, isTpo])
 
   const openCreate = (eventDate: string) =>
     setDrawer({ open: true, draft: newDraftOn(eventDate), editing: null })
@@ -172,80 +198,121 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student', onSignOut }
 
   return (
     <div className="flex w-full flex-col gap-[1rem] p-[1.5rem]">
-      <header className="flex flex-wrap items-center justify-between gap-[0.75rem]">
-        <div className="flex items-center gap-[0.5rem]">
-          <CalendarDays className="size-[1.25rem] text-brand" />
-          <h1 className="text-[1.25rem] font-semibold">{title}</h1>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="size-5 [color:var(--ds-color-brand)]" />
+          <h1 className="text-xl font-semibold">{title}</h1>
         </div>
 
-        <div className="flex items-center gap-[0.5rem]">
-          {isTpo && (
-            <Button size="sm" onClick={() => openCreate('')}>
-              <Plus className="size-[0.875rem]" />
-              New Event
-            </Button>
-          )}
-          <Button variant="outline" size="icon" aria-label="Previous month"
-            onClick={() => setMonth(view === 'week' ? subWeeks(month, 1) : subMonths(month, 1))}>
-            <ChevronLeft className="size-[1rem]" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setMonth(new Date())}>
-            Today
-          </Button>
-          <Button variant="outline" size="icon" aria-label="Next month"
-            onClick={() => setMonth(view === 'week' ? addWeeks(month, 1) : addMonths(month, 1))}>
-            <ChevronRight className="size-[1rem]" />
-          </Button>
-          <span className="min-w-[12rem] text-center text-sm font-semibold">
-            {view === 'week'
-              ? `${format(startOfWeek(month, { weekStartsOn: 1 }), 'd MMM')} – ${format(endOfWeek(month, { weekStartsOn: 1 }), 'd MMM yyyy')}`
-              : format(month, 'MMMM yyyy')}
-          </span>
-          {onSignOut && (
-            <Button variant="ghost" size="sm" onClick={onSignOut}>
-              Sign out
-            </Button>
-          )}
-        </div>
       </header>
 
-      <div className="flex items-center gap-[0.25rem] self-start rounded-[0.5rem] border bg-card p-[0.25rem]">
-        {VIEWS.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            onClick={() => setView(entry.id)}
-            className={cn(
-              'rounded-[0.375rem] px-[0.75rem] py-[0.25rem] text-[0.8125rem] font-medium transition-colors',
-              view === entry.id ? 'bg-brand text-brand-foreground' : 'text-muted-foreground hover:bg-muted',
-            )}
-          >
-            {entry.label}
-          </button>
-        ))}
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[16rem]">
+          <MiniCalendar
+            month={month}
+            selected={selectedDay}
+            onMonthChange={setMonth}
+            onPick={(day) => {
+              setSelectedDay(day)
+              setMonth(day)
+            }}
+          />
+          <Legend />
+        </aside>
+
+        <section className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 [background-color:var(--ds-color-bg-surface)]">
+            <div className="flex items-center gap-2">
+              {isTpo && (
+                <Button size="sm" onClick={() => openCreate(format(selectedDay, 'yyyy-MM-dd'))}>
+                  <Plus className="size-3.5" />
+                  New Event
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setMonth(new Date())
+                  setSelectedDay(new Date())
+                }}
+              >
+                Today
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                aria-label={`Previous ${stepName}`}
+                onClick={() => goBack()}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                aria-label={`Next ${stepName}`}
+                onClick={() => goForward()}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+              <span className="text-base font-semibold">{rangeLabel}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+            {isTpo && <FilterBar filters={filters} onChange={setFilters} />}
+            <div className="flex items-center gap-1 rounded-lg border p-1">
+              {VIEWS.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => setView(entry.id)}
+                  className={cn(
+                    'cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors',
+                    view === entry.id
+                      ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
+                      : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
+                  )}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+            </div>
+          </div>
+
+          {view === 'day' && (
+            <DayGrid
+              day={selectedDay}
+              items={visible}
+              onOpen={(item) => setOpenedId(item.id)}
+              onPickDate={isTpo ? (day) => openCreate(format(day, 'yyyy-MM-dd')) : undefined}
+            />
+          )}
+          {view === 'month' && (
+            <MonthGrid
+              month={month}
+              items={visible}
+              selected={selectedDay}
+              onOpen={(item) => setOpenedId(item.id)}
+              onPickDate={(day) => {
+                setSelectedDay(day)
+                if (isTpo) openCreate(format(day, 'yyyy-MM-dd'))
+              }}
+            />
+          )}
+          {view === 'list' && <ListView month={month} items={visible} onOpen={(item) => setOpenedId(item.id)} />}
+          {view === 'week' && (
+            <WeekGrid
+              week={month}
+              items={visible}
+              onOpen={(item) => setOpenedId(item.id)}
+              onPickDate={isTpo ? (day) => openCreate(format(day, 'yyyy-MM-dd')) : undefined}
+            />
+          )}
+        </section>
       </div>
-
-      {isTpo && <FilterBar filters={filters} onChange={setFilters} />}
-
-      {view === 'month' && (
-        <MonthGrid
-          month={month}
-          items={visible}
-          onOpen={(item) => setOpenedId(item.id)}
-          onPickDate={isTpo ? (day) => openCreate(format(day, 'yyyy-MM-dd')) : undefined}
-        />
-      )}
-      {view === 'list' && <ListView month={month} items={visible} onOpen={(item) => setOpenedId(item.id)} />}
-      {view === 'week' && (
-        <WeekGrid
-          week={month}
-          items={visible}
-          onOpen={(item) => setOpenedId(item.id)}
-          onPickDate={isTpo ? (day) => openCreate(format(day, 'yyyy-MM-dd')) : undefined}
-        />
-      )}
-
-      <Legend />
 
       {toast && (
         <div className="fixed bottom-[1.5rem] left-1/2 z-[80] -translate-x-1/2 rounded-[0.5rem] bg-foreground px-[1rem] py-[0.625rem] text-[0.8125rem] font-medium text-white shadow-lg">
@@ -257,6 +324,15 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student', onSignOut }
         open={drawer.open}
         initial={drawer.draft}
         isEdit={Boolean(drawer.editing)}
+        dayEntries={events
+          .filter((event) => !event.cancelledAt && event.id !== drawer.editing?.id)
+          .map((event) => ({
+            id: event.id,
+            title: event.draft.title,
+            eventDate: event.draft.eventDate,
+            startTime: event.draft.startTime,
+            endTime: event.draft.endTime,
+          }))}
         onClose={() => setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })}
         onSave={save}
       />

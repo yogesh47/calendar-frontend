@@ -58,7 +58,7 @@ const NotificationBell = () => {
         </button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-[22rem] p-0">
+      <PopoverContent hideWhenDetached collisionPadding={8} align="end" className="w-[22rem] p-0">
         <div className="flex items-center justify-between border-b px-4 py-2.5">
           <p className="text-sm font-semibold">Notifications</p>
           {unread > 0 && (

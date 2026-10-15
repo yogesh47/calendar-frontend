@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { styleOf } from '../../helpers'
 import type { CalendarItem } from '../../types'
@@ -5,46 +6,37 @@ import type { CalendarItem } from '../../types'
 type ItemTileProps = {
   item: CalendarItem
   onOpen?: (item: CalendarItem) => void
+  showTime?: boolean
   className?: string
 }
 
-/**
- * One row on a day — month tile, week column, list, "Coming Up", mobile.
- *
- * The coloured left border carries the kind, and the label repeats it in words:
- * the spec forbids leaning on colour alone, so the text is not optional here.
- */
-const ItemTile = ({ item, onOpen, className }: ItemTileProps) => {
+const ItemTile = ({ item, onOpen, showTime, className }: ItemTileProps) => {
   const style = styleOf(item)
+  const time = !item.isAllDay && showTime ? format(new Date(item.startsAt), 'h:mm a') : ''
 
   return (
     <button
       type="button"
-      onClick={() => onOpen?.(item)}
       title={item.title}
+      onClick={(event) => {
+        event.stopPropagation()
+        onOpen?.(item)
+      }}
       className={cn(
-        'flex w-full items-center gap-[0.375rem] rounded-[0.25rem] px-[0.375rem] py-[0.25rem] text-left',
+        'flex w-full cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs',
         'border-l-[3px] transition-colors hover:brightness-95',
         style.dashed && 'border-l-0 border border-dashed',
         className,
       )}
-      style={{
-        backgroundColor: style.surface,
-        borderColor: style.accent,
-      }}
+      style={{ backgroundColor: style.surface, borderColor: style.accent }}
     >
-      <span
-        className="shrink-0 text-[0.625rem] font-semibold uppercase tracking-[0.02em]"
-        style={{ color: style.accent }}
-      >
-        {style.label}
-      </span>
-      <span
-        className={cn(
-          'min-w-0 flex-1 truncate text-[0.75rem] font-medium text-foreground',
-          style.struck && 'line-through opacity-60',
-        )}
-      >
+      {time && <span className="shrink-0 font-semibold" style={{ color: style.accent }}>{time}</span>}
+      {!time && (
+        <span className="shrink-0 text-[0.625rem] font-bold uppercase" style={{ color: style.accent }}>
+          {style.label}
+        </span>
+      )}
+      <span className={cn('truncate', style.struck && 'line-through [color:var(--ds-color-text-tertiary)]')}>
         {item.title}
       </span>
     </button>

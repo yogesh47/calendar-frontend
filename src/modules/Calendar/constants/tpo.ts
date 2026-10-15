@@ -1,4 +1,4 @@
-import { CAMPUS_JOBS, jobLabel } from '../services/jobs'
+import { CAMPUS_JOBS, EXTERNAL_JOBS, jobLabel } from '../services/jobs'
 import type { Audience, CalendarFilters, CancelReason, EventDraft, OpportunityType, TpoEventType } from '../types/tpo'
 
 export const SIGNED_IN_TPO = 'me'
@@ -77,7 +77,7 @@ export const BATCH_OPTIONS: { year: number; label: string }[] = [
   { year: 2030, label: '2030 (First year)' },
 ]
 
-export const COMPANY_OPTIONS = ['Deloitte', 'Infosys', 'TCS', 'Wipro', 'Accenture', 'Zoho']
+export const COMPANY_OPTIONS = [...new Set([...CAMPUS_JOBS, ...EXTERNAL_JOBS].map((job) => job.company))]
 
 export const CAMPUS_JOB_OPTIONS = CAMPUS_JOBS.map(jobLabel)
 
@@ -128,6 +128,7 @@ export const EMPTY_DRAFT: EventDraft = {
   title: '',
   company: '',
   eventDate: '',
+  endDate: '',
   startTime: '',
   endTime: '',
   mode: '',

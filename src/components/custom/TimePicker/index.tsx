@@ -218,7 +218,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
             </button>
           </PopoverTrigger>
 
-          <PopoverContent className="w-auto rounded-[var(--ds-radius-lg)] p-2" align="start" aria-label="Choose time">
+          <PopoverContent hideWhenDetached collisionPadding={8} className="w-auto rounded-[var(--ds-radius-lg)] p-2" align="start" aria-label="Choose time">
             <div className="flex gap-1">
               <ul
                 ref={hourColRef}

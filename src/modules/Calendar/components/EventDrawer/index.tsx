@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react'
-import { CalendarPlus, Info, Link2, Lock, X } from 'lucide-react'
+import { CalendarPlus, Info, Link2, Lock, Wand2, X } from 'lucide-react'
 import { useFormik, validateYupSchema, yupToFormErrors } from 'formik'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Textarea'
+import TiptapEditor from '@/components/custom/TiptapEditor'
 import { DatePicker } from '@/components/custom/DatePicker'
-import { TimePicker } from '@/components/custom/TimePicker'
+import TimeSelect, { addDaysTo, dayShift, plusHour } from '../TimeSelect'
 import { Combobox, MultiSelect } from '@/components/ui/MultiSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup'
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/Drawer'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog'
+import DayPreview from '../DayPreview'
 import LinkJobDialog from '../LinkJobDialog'
 import { LIMITS } from '../../constants'
 import { rulesFor } from '../../helpers/tpo'
@@ -25,18 +27,21 @@ import { eventSchema } from '../../services/eventSchema'
 import {
   BATCH_OPTIONS,
   COMPANY_OPTIONS,
+  FINAL_YEAR_BATCH,
   COURSE_OPTIONS,
   DEPARTMENT_OPTIONS,
   EVENT_TYPE_OPTIONS,
   MODE_OPTIONS,
   OPPORTUNITY_OPTIONS,
 } from '../../constants/tpo'
+import type { DayEntry } from '../DayPreview'
 import type { EventDraft, EventMode, LinkedJob, OpportunityType, TpoEventType } from '../../types/tpo'
 
 interface EventDrawerProps {
   open: boolean
   initial: EventDraft
   isEdit: boolean
+  dayEntries: DayEntry[]
   onClose: () => void
   onSave: (draft: EventDraft) => void
 }
@@ -49,7 +54,7 @@ const InfoNote = ({ icon, children }: { icon?: React.ReactNode; children: React.
 )
 
 const Section = ({ title, caption, children }: { title: string; caption?: string; children: React.ReactNode }) => (
-  <section className="space-y-3 rounded-xl border p-4 [background-color:var(--ds-color-bg-surface)]">
+  <section className="space-y-2.5 rounded-xl border p-3 [background-color:var(--ds-color-bg-surface)]">
     <div>
       <h3 className="text-sm font-semibold">{title}</h3>
       {caption && <p className="text-sm [color:var(--ds-color-text-secondary)]">{caption}</p>}
@@ -60,7 +65,7 @@ const Section = ({ title, caption, children }: { title: string; caption?: string
 
 const Required = () => <span className="[color:var(--ds-color-danger)]">*</span>
 
-const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProps) => {
+const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: EventDrawerProps) => {
   const [linking, setLinking] = useState(false)
 
   const form = useFormik<EventDraft>({
@@ -131,33 +136,74 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
     })
   }
 
-  const close = () => {
-    if (form.dirty && !window.confirm('You have unsaved changes. Close anyway?')) return
-    onClose()
+  const fillDummy = () => {
+    const day = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+
+    form.setValues({
+      ...draft,
+      title: isReminder ? 'Call the HR team for results' : 'Pre-Placement Talk',
+      company: rules.needsCompany ? COMPANY_OPTIONS[0] : '',
+      eventDate: day,
+      endDate: day,
+      startTime: rules.needsTime ? '10:00' : isReminder ? '15:00' : '',
+      endTime: rules.needsTime ? '11:30' : '',
+      mode: rules.needsMode ? 'offline' : '',
+      venue: rules.needsMode ? 'Auditorium, Block A' : '',
+      onlinePlatform: '',
+      description: rules.needsAudience ? 'Bring your resume and ID card.' : '',
+      note: isReminder ? 'Ask about the shortlist date' : '',
+      audience: rules.needsAudience
+        ? {
+            opportunityType: 'job',
+            courses: ['BTech'],
+            batches: [FINAL_YEAR_BATCH],
+            departments: ['Computer Science', 'Information Technology'],
+          }
+        : draft.audience,
+    })
   }
+
+  const setStartDate = (value: string) => {
+    const shift = dayShift(draft.eventDate, draft.endDate)
+    form.setFieldValue('eventDate', value)
+    form.setFieldValue('endDate', addDaysTo(value, shift))
+  }
+
+  const close = () => onClose()
 
   const saveLabel = isEdit ? 'Save Changes' : isReminder ? 'Save Reminder' : 'Publish Event'
 
   return (
-    <Drawer open={open} modal={false} onOpenChange={(next) => !next && close()}>
-      <DrawerContent
-        side="right"
-        className="w-full sm:max-w-[30rem]"
+    <>
+      {open && <div className="fixed inset-0 z-40 bg-black/50" aria-hidden />}
+    <Dialog open={open} modal={false} onOpenChange={(next) => !next && close()}>
+      <DialogContent
+        className="max-h-[92vh] w-[min(68rem,96vw)] max-w-none gap-0 p-0 [background-color:var(--ds-color-bg-surface)]"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DrawerHeader>
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-lg [background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]">
-              <CalendarPlus className="size-5" />
-            </span>
-            <div>
-              <DrawerTitle>{isEdit ? 'Edit Event' : 'Create New Event'}</DrawerTitle>
-              <DrawerDescription className="sr-only">Event details</DrawerDescription>
+        <DialogHeader className="px-4 pb-3 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg [background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]">
+                <CalendarPlus className="size-5" />
+              </span>
+              <div>
+                <DialogTitle>{isEdit ? 'Edit Event' : 'Create New Event'}</DialogTitle>
+                <DialogDescription className="sr-only">Event details</DialogDescription>
+              </div>
             </div>
-          </div>
-        </DrawerHeader>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 [background-color:var(--ds-color-bg-app)]">
+            {!isEdit && (
+              <Button type="button" variant="outline" size="sm" className="mr-8" onClick={fillDummy}>
+                <Wand2 className="size-3.5" />
+                Fill Data
+              </Button>
+            )}
+          </div>
+        </DialogHeader>
+
+        <div className="grid max-h-[70vh] gap-3 overflow-hidden px-4 pb-4 pt-3 [background-color:var(--ds-color-bg-app)] lg:grid-cols-[1fr_24rem]">
+          <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
           <Section title="Event basics">
           <div className="space-y-1.5">
             <Label>
@@ -182,9 +228,9 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
               </>
             }
             name="title"
+            placeholder={isReminder ? 'Call the HR team for results' : 'Pre-Placement Talk'}
             showCount
             maxLength={LIMITS.titleLength}
-            hint={`Max ${LIMITS.titleLength} characters`}
             value={draft.title}
             error={errorFor('title')}
             onChange={form.handleChange}
@@ -200,24 +246,23 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
                 options={COMPANY_OPTIONS.map((company) => ({ value: company, label: company }))}
                 onChange={(value) => form.setFieldValue('company', value)}
               />
-              {draft.company && (
-                <p className="text-sm [color:var(--ds-color-text-secondary)]">
-                  Existing {draft.company} events: Online Assessment, 2 Oct (Ravi Sharma)
-                </p>
-              )}
             </div>
           )}
 
-          <div className={rules.needsTime ? 'grid grid-cols-3 gap-2.5' : isReminder ? 'grid grid-cols-2 gap-2.5' : ''}>
+          <div className={rules.needsTime ? 'grid grid-cols-2 gap-2.5' : isReminder ? 'grid grid-cols-2 gap-2.5' : ''}>
             <div className="space-y-1.5">
               <Label htmlFor="eventDate">
-                Date <span className="[color:var(--ds-color-danger)]">*</span>
+                {rules.needsTime ? 'Start date' : 'Date'} <Required />
               </Label>
               <DatePicker
                 id="eventDate"
+                className="w-full"
+                showMonthPicker
+                showYearPicker
+                yearRange={{ from: new Date().getFullYear() - 1, to: new Date().getFullYear() + 5 }}
                 value={draft.eventDate}
                 hasError={Boolean(errorFor('eventDate'))}
-                onChange={(value) => form.setFieldValue('eventDate', value)}
+                onChange={setStartDate}
               />
               {errorFor('eventDate') && (
                 <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('eventDate')}</p>
@@ -226,31 +271,64 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
 
             {rules.needsTime && (
               <>
-                <TimePicker
-                  label="Start Time *"
-                  value={draft.startTime}
-                  error={errorFor('startTime')}
-                  onChange={(value) => form.setFieldValue('startTime', value)}
-                />
-                <TimePicker
-                  label="End Time *"
-                  value={draft.endTime}
-                  error={errorFor('endTime')}
-                  onChange={(value) => form.setFieldValue('endTime', value)}
-                />
+                <div className="space-y-1.5">
+                  <Label>
+                    Start Time <Required />
+                  </Label>
+                  <TimeSelect
+                    value={draft.startTime}
+                    onChange={(value) => {
+                      const end = plusHour(value)
+                      form.setFieldValue('startTime', value)
+                      form.setFieldValue('endTime', end)
+                      form.setFieldValue('endDate', addDaysTo(draft.eventDate, end < value ? 1 : 0))
+                    }}
+                  />
+                  {errorFor('startTime') && (
+                    <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('startTime')}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="endDate">
+                    End date <Required />
+                  </Label>
+                  <DatePicker
+                    id="endDate"
+                    className="w-full"
+                    showMonthPicker
+                    showYearPicker
+                    yearRange={{ from: new Date().getFullYear() - 1, to: new Date().getFullYear() + 5 }}
+                    value={draft.endDate || draft.eventDate}
+                    hasError={Boolean(errorFor('endDate'))}
+                    onChange={(value) => form.setFieldValue('endDate', value)}
+                  />
+                  {errorFor('endDate') && (
+                    <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('endDate')}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>
+                    End Time <Required />
+                  </Label>
+                  <TimeSelect value={draft.endTime} onChange={(value) => form.setFieldValue('endTime', value)} />
+                  {errorFor('endTime') && (
+                    <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('endTime')}</p>
+                  )}
+                </div>
               </>
             )}
 
             {isReminder && (
-              <TimePicker
-                label="Time (optional)"
-                value={draft.startTime}
-                onChange={(value) => form.setFieldValue('startTime', value)}
-              />
+              <div className="space-y-1.5">
+                <Label>Time (optional)</Label>
+                <TimeSelect value={draft.startTime} onChange={(value) => form.setFieldValue('startTime', value)} />
+              </div>
             )}
           </div>
 
           {rules.info && !isReminder && <InfoNote>{rules.info}</InfoNote>}
+
           </Section>
 
           {rules.needsMode && (
@@ -279,6 +357,7 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
               {draft.mode === 'offline' && (
                 <Input
                   name="venue"
+                  placeholder="Auditorium, Block A"
                   label={
                     <>
                       Venue <span className="[color:var(--ds-color-danger)]">*</span>
@@ -417,20 +496,16 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
               label="Note (optional)"
               showCount
               maxLength={LIMITS.reminderNoteLength}
-              hint={`Max ${LIMITS.reminderNoteLength} characters`}
               value={draft.note}
               onChange={form.handleChange}
             />
           ) : (
-            <Textarea
-              name="description"
-              rows={3}
+            <TiptapEditor
               label="Description (optional)"
-              showCount
-              maxLength={LIMITS.descriptionLength}
-              hint={`Max ${LIMITS.descriptionLength} characters`}
               value={draft.description}
-              onChange={form.handleChange}
+              maxLength={LIMITS.descriptionLength}
+              error={errorFor('description')}
+              onChange={(html) => form.setFieldValue('description', html)}
             />
           )}
 
@@ -481,9 +556,27 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
               setLinking(false)
             }}
           />
+          </div>
+
+          {rules.needsTime && draft.eventDate && (
+            <div className="min-h-0 lg:h-full">
+              <DayPreview
+                date={draft.eventDate}
+                startTime={draft.startTime}
+                endTime={draft.endTime}
+                title={draft.title}
+                entries={dayEntries}
+                onDateChange={setStartDate}
+                onTimeChange={(start, end) => {
+                  form.setFieldValue('startTime', start)
+                  form.setFieldValue('endTime', end)
+                }}
+              />
+            </div>
+          )}
         </div>
 
-        <DrawerFooter className="flex-row items-center justify-between">
+        <DialogFooter className="flex-row items-center justify-between px-4 py-3">
           <span className="text-sm [color:var(--ds-color-text-secondary)]">
             {rules.needsAudience && count > 0 ? `${count} students will be notified` : ''}
           </span>
@@ -495,9 +588,10 @@ const EventDrawer = ({ open, initial, isEdit, onClose, onSave }: EventDrawerProp
               {saveLabel}
             </Button>
           </span>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 

@@ -34,6 +34,7 @@ export type EventDraft = {
   title: string
   company: string
   eventDate: string
+  endDate: string
   startTime: string
   endTime: string
   mode: EventMode

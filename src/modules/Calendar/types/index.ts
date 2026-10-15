@@ -25,4 +25,4 @@ export type CalendarItem = {
   linkedJob?: { kind: 'campus' | 'external'; id?: string; url?: string; title?: string }
 }
 
-export type CalendarView = 'month' | 'week' | 'list'
+export type CalendarView = 'day' | 'month' | 'week' | 'list'

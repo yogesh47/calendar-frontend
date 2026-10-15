@@ -3,13 +3,13 @@ import { Info } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/Drawer'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog'
 import { audienceLine, labelFor, rulesFor } from '../../helpers/tpo'
 import { CANCEL_REASON_LABEL, SIGNED_IN_TPO } from '../../constants/tpo'
 import type { TpoEvent } from '../../types/tpo'
@@ -74,17 +74,19 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete }: EventD
   ) : null
 
   return (
-    <Drawer open modal={false} onOpenChange={(next) => !next && onClose()}>
-      <DrawerContent side="right" className="w-full sm:max-w-[28rem]">
-        <DrawerHeader>
-          <DrawerTitle>
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50" aria-hidden />
+    <Dialog open modal={false} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="max-h-[90vh] w-[min(34rem,94vw)] max-w-none gap-0 p-0 [background-color:var(--ds-color-bg-surface)]">
+        <DialogHeader className="px-4 pb-3 pt-4">
+          <DialogTitle>
             {labelFor(draft.eventType)}
             {isCancelled ? ' · CANCELLED' : ''}
-          </DrawerTitle>
-          <DrawerDescription>{draft.company || 'Event details'}</DrawerDescription>
-        </DrawerHeader>
+          </DialogTitle>
+          <DialogDescription>{draft.company || 'Event details'}</DialogDescription>
+        </DialogHeader>
 
-        <div className="flex-1 space-y-3.5 overflow-y-auto px-5 py-4">
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto px-4 pb-4">
         <h3 className={cn('text-lg font-semibold', isCancelled && '[color:var(--ds-color-text-tertiary)] line-through')}>
           {draft.title}
         </h3>
@@ -154,9 +156,10 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete }: EventD
         )}
         </div>
 
-        {footer && <DrawerFooter>{footer}</DrawerFooter>}
-      </DrawerContent>
-    </Drawer>
+        {footer && <DialogFooter className="px-4 py-3">{footer}</DialogFooter>}
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 

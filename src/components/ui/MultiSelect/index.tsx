@@ -142,6 +142,14 @@ function OptionList({
   const shown = ordered.slice(0, page);
   const hiddenCount = ordered.length - shown.length;
 
+  // On open, bring the current selection into view — a long list (times, years)
+  // otherwise opens at the top with the picked row far below.
+  React.useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.scrollIntoView({ block: 'center' });
+  }, []);
+
   React.useEffect(() => {
     if (!scrollOnActive.current) return;
     scrollOnActive.current = false;
@@ -350,7 +358,7 @@ export function MultiSelect({
           <ChevronDown className="size-4 shrink-0 opacity-60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" hideWhenDetached collisionPadding={8}>
         <OptionList
           options={active}
           searchable={searchable}
@@ -414,6 +422,8 @@ export function Combobox({
       {/* At least the trigger's width, but wider when a label needs it — pinned
           to the trigger's width, long options ended in an ellipsis. */}
       <PopoverContent
+        hideWhenDetached
+        collisionPadding={8}
         className="w-max min-w-[--radix-popover-trigger-width] max-w-[22rem] p-0"
         align="end"
       >

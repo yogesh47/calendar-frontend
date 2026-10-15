@@ -86,7 +86,7 @@ const DatePicker = ({
         </button>
       </PopoverTrigger>
 
-      <PopoverContent align="start" sideOffset={4} className="w-auto p-0">
+      <PopoverContent align="start" sideOffset={4} hideWhenDetached collisionPadding={8} className="w-auto p-0">
         <Calendar
           mode="single"
           selected={selected}

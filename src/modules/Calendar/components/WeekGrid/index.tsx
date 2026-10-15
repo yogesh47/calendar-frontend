@@ -92,7 +92,9 @@ const WeekGrid = ({ week, items, onOpen, onPickDate }: WeekGridProps) => {
           {days.map((day) => (
             <div key={day.toISOString()} className="relative border-r">
               {HOURS.map((hour) => (
-                <div key={hour} className="border-b" style={{ height: `${ROW_HEIGHT}rem` }} />
+                <div key={hour} className="border-b" style={{ height: `${ROW_HEIGHT}rem` }}>
+                  <div className="h-1/2 border-b border-dashed [border-color:var(--ds-color-border-default)]" />
+                </div>
               ))}
 
               {timedOn(day).map((item) => {

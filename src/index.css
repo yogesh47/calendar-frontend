@@ -19,6 +19,14 @@ body:has([role='alertdialog'][data-state='open']) [data-seren-corner] {
   display: none;
 }
 
+/* A modal dialog sets `pointer-events: none` on <body>, which also silences any
+   popover portalled next to it — the selects, date and time pickers inside the
+   event modal. The popper wrapper only exists while a popover is open, so
+   handing it back its own pointer events is safe and keeps the backdrop. */
+[data-radix-popper-content-wrapper] {
+  pointer-events: auto;
+}
+
 @layer base {
 
   /* One default for every placeholder — inputs, textareas, search boxes. The
