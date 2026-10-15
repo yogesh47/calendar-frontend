@@ -11,7 +11,7 @@ import {
   startOfWeek,
   subMonths,
 } from 'date-fns'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -41,7 +41,7 @@ const MiniCalendar = ({ month, selected, className, onMonthChange, onPick }: Min
             onClick={() => onMonthChange(subMonths(month, 1))}
             className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
           >
-            <ChevronUp className="size-4" />
+            <ChevronLeft className="size-4" />
           </button>
           <button
             type="button"
@@ -49,7 +49,7 @@ const MiniCalendar = ({ month, selected, className, onMonthChange, onPick }: Min
             onClick={() => onMonthChange(addMonths(month, 1))}
             className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
           >
-            <ChevronDown className="size-4" />
+            <ChevronRight className="size-4" />
           </button>
         </div>
       </div>

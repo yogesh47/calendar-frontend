@@ -3,6 +3,7 @@ import { addDays, format, isToday, subDays } from 'date-fns'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DayJump from '../DayJump'
+import { overlaps } from '../../helpers/conflicts'
 
 export type DayEntry = {
   id: string
@@ -198,16 +199,25 @@ const DayPreview = ({ date, startTime, endTime, title, entries, onDateChange, on
               </div>
             )}
 
-            {onThisDay.map((entry) => (
-              <div
-                key={entry.id}
-                title={entry.title}
-                className="absolute left-1 right-1 overflow-hidden rounded px-1.5 py-0.5 text-xs [background-color:var(--ds-color-bg-muted)] [color:var(--ds-color-text-secondary)]"
-                style={block(entry.startTime, entry.endTime)}
-              >
-                <span className="block truncate">{entry.title}</span>
-              </div>
-            ))}
+            {onThisDay.map((entry) => {
+              const clash = Boolean(startTime) && overlaps(startTime, endTime, entry.startTime, entry.endTime)
+
+              return (
+                <div
+                  key={entry.id}
+                  title={entry.title}
+                  className={cn(
+                    'absolute left-1 right-1 overflow-hidden rounded px-1.5 py-0.5 text-xs',
+                    clash
+                      ? 'border [border-color:var(--ds-color-warning)] [background-color:var(--ds-color-warning-subtle)] [color:var(--ds-color-warning-text)]'
+                      : '[background-color:var(--ds-color-bg-muted)] [color:var(--ds-color-text-secondary)]',
+                  )}
+                  style={block(entry.startTime, entry.endTime)}
+                >
+                  <span className="block truncate">{entry.title}</span>
+                </div>
+              )
+            })}
 
             {isToday(new Date(`${date}T00:00:00`)) && (
               <div

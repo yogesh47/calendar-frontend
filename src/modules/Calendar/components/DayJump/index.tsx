@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { format, setMonth, setYear } from 'date-fns'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { cn } from '@/lib/utils'
@@ -40,21 +40,25 @@ const DayJump = ({ date, onDateChange }: DayJumpProps) => {
         </button>
       </PopoverTrigger>
 
-      <PopoverContent hideWhenDetached collisionPadding={8}
+      <PopoverContent
+        hideWhenDetached
+        collisionPadding={8}
         align="end"
-        className="w-[32rem] p-3 [background-color:var(--ds-color-bg-surface)]"
+        className="w-[30rem] overflow-hidden p-0 [background-color:var(--ds-color-bg-surface)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="grid grid-cols-2 gap-4">
-          <MiniCalendar
-            className="border-0 p-0"
-            month={view}
-            selected={day}
-            onMonthChange={setView}
-            onPick={pick}
-          />
+        <div className="grid grid-cols-2 divide-x">
+          <div className="p-4">
+            <MiniCalendar
+              className="border-0 p-0"
+              month={view}
+              selected={day}
+              onMonthChange={setView}
+              onPick={pick}
+            />
+          </div>
 
-          <div>
+          <div className="flex flex-col p-4">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold">{format(view, 'yyyy')}</p>
               <div className="flex items-center gap-0.5">
@@ -64,7 +68,7 @@ const DayJump = ({ date, onDateChange }: DayJumpProps) => {
                   onClick={() => setView(setYear(view, view.getFullYear() - 1))}
                   className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
                 >
-                  <ChevronUp className="size-4" />
+                  <ChevronLeft className="size-4" />
                 </button>
                 <button
                   type="button"
@@ -72,19 +76,19 @@ const DayJump = ({ date, onDateChange }: DayJumpProps) => {
                   onClick={() => setView(setYear(view, view.getFullYear() + 1))}
                   className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
                 >
-                  <ChevronDown className="size-4" />
+                  <ChevronRight className="size-4" />
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-1">
+            <div className="grid grid-cols-3 content-start gap-1.5">
               {MONTHS.map((month, index) => (
                 <button
                   key={month}
                   type="button"
                   onClick={() => setView(setMonth(view, index))}
                   className={cn(
-                    'cursor-pointer rounded px-2 py-1.5 text-sm',
+                    'h-8 cursor-pointer rounded-md text-sm transition-colors',
                     view.getMonth() === index
                       ? '[background-color:var(--ds-color-brand)] font-semibold [color:var(--ds-color-brand-fg)]'
                       : 'hover:[background-color:var(--ds-color-bg-muted)]',
@@ -94,13 +98,16 @@ const DayJump = ({ date, onDateChange }: DayJumpProps) => {
                 </button>
               ))}
             </div>
-
-            <div className="mt-2 flex justify-end">
-              <Button variant="link" className="text-sm" onClick={() => pick(new Date())}>
-                Today
-              </Button>
-            </div>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t px-4 py-2.5">
+          <span className="text-sm [color:var(--ds-color-text-secondary)]">
+            {format(day, 'EEE, MMM d, yyyy')}
+          </span>
+          <Button variant="link" className="h-auto p-0 text-sm" onClick={() => pick(new Date())}>
+            Today
+          </Button>
         </div>
       </PopoverContent>
     </Popover>

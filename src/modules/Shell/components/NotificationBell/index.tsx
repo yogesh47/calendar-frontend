@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Bell } from 'lucide-react'
+import { format, isSameDay, isToday, isYesterday } from 'date-fns'
+import { Bell, CalendarDays, CalendarX2, CheckCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { cn } from '@/lib/utils'
-import { requestOpenEvent } from '@/modules/Calendar/services/store'
+import { onWindowFocus, requestOpenEvent } from '@/modules/Calendar/services/store'
 import {
   fetchNotifications,
   openCalendarStream,
@@ -12,12 +13,40 @@ import {
 } from '@/modules/Calendar/services/api'
 import type { ApiNotification } from '@/modules/Calendar/services/api'
 
-const timeAgo = (value: string): string => {
-  const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  if (minutes < 1440) return `${Math.round(minutes / 60)}h ago`
-  return `${Math.round(minutes / 1440)}d ago`
+const TITLE = 'Notifications'
+
+const EMPTY_TITLE = 'No notifications yet'
+
+const EMPTY_DESCRIPTION = 'Campus events you are invited to will show up here.'
+
+const relativeTime = (value: string): string => {
+  const moment = new Date(value)
+  const minutes = Math.floor((Date.now() - moment.getTime()) / 60000)
+
+  return minutes < 1 ? 'Just now' : format(moment, 'h:mm a')
+}
+
+const headingFor = (value: string): string => {
+  const moment = new Date(value)
+  if (isToday(moment)) return 'Today'
+  if (isYesterday(moment)) return 'Yesterday'
+
+  return format(moment, 'MMM d, yyyy')
+}
+
+const groupByDay = (notifications: ApiNotification[]): { heading: string; rows: ApiNotification[] }[] => {
+  const groups: { heading: string; rows: ApiNotification[] }[] = []
+
+  notifications.forEach((entry) => {
+    const last = groups[groups.length - 1]
+    if (last && isSameDay(new Date(last.rows[0].created_at), new Date(entry.created_at))) {
+      last.rows.push(entry)
+      return
+    }
+    groups.push({ heading: headingFor(entry.created_at), rows: [entry] })
+  })
+
+  return groups
 }
 
 const NotificationBell = () => {
@@ -31,6 +60,9 @@ const NotificationBell = () => {
     return openCalendarStream(refresh)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => onWindowFocus(refresh), [])
 
   const unread = notifications.filter((entry) => !entry.is_read).length
 
@@ -46,7 +78,7 @@ const NotificationBell = () => {
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+          aria-label={unread ? `${TITLE}, ${unread} unread` : TITLE}
           className="relative grid size-9 cursor-pointer place-items-center rounded-lg [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
         >
           <Bell className="size-5" />
@@ -58,37 +90,108 @@ const NotificationBell = () => {
         </button>
       </PopoverTrigger>
 
-      <PopoverContent hideWhenDetached collisionPadding={8} align="end" className="w-[22rem] p-0">
-        <div className="flex items-center justify-between border-b px-4 py-2.5">
-          <p className="text-sm font-semibold">Notifications</p>
-          {unread > 0 && (
-            <Button variant="link" className="text-sm" onClick={() => readAllNotifications().then(refresh)}>
-              Mark all read
-            </Button>
+      <PopoverContent
+        hideWhenDetached
+        collisionPadding={8}
+        align="end"
+        className="w-[24rem] overflow-hidden p-0 [background-color:var(--ds-color-bg-surface)]"
+      >
+        <div className="flex shrink-0 flex-col gap-[0.875rem] border-b px-[1.25rem] pb-[0.875rem] pt-[1.125rem]">
+          <h2 className="text-[1.125rem] font-semibold leading-[1.625rem] [color:var(--color-gray-800)]">
+            {TITLE}
+          </h2>
+
+          {notifications.length > 0 && (
+            <div className="flex items-center justify-between gap-[0.75rem]">
+              <span className="text-[0.8125rem] [color:var(--color-gray-600)]">
+                {unread ? `${unread} unread` : 'All caught up'}
+              </span>
+
+              {unread > 0 && (
+                <Button
+                  variant="link"
+                  onClick={() => readAllNotifications().then(refresh)}
+                  className="h-auto gap-[0.375rem] p-0 text-[0.8125rem] font-semibold [color:var(--ds-color-brand)]"
+                >
+                  <CheckCheck className="size-4" strokeWidth={2} />
+                  Mark all as read
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
-        <div className="max-h-[22rem] overflow-y-auto">
+        <div className="flex max-h-[24rem] min-h-0 w-full flex-1 flex-col overflow-y-auto">
           {notifications.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm [color:var(--ds-color-text-secondary)]">
-              Abhi koi notification nahi hai.
-            </p>
+            <div className="flex flex-col items-center gap-[0.625rem] px-[1.5rem] py-[2rem] text-center">
+              <span className="grid size-12 place-items-center rounded-full [background-color:var(--ds-color-brand-subtle)]">
+                <Bell className="size-6 [color:var(--ds-color-brand)]" strokeWidth={1.8} />
+              </span>
+              <p className="text-[0.9375rem] font-semibold [color:var(--color-gray-800)]">{EMPTY_TITLE}</p>
+              <p className="text-[0.8125rem] [color:var(--color-gray-600)]">{EMPTY_DESCRIPTION}</p>
+            </div>
           ) : (
-            notifications.map((notification) => (
-              <button
-                key={notification.notification_id}
-                type="button"
-                onClick={() => openEvent(notification)}
-                className={cn(
-                  'flex w-full cursor-pointer flex-col gap-0.5 border-b px-4 py-2.5 text-left last:border-b-0 hover:[background-color:var(--ds-color-bg-muted)]',
-                  !notification.is_read && '[background-color:var(--ds-color-brand-subtle)]',
-                )}
-              >
-                <span className="text-sm">{notification.message}</span>
-                <span className="text-xs [color:var(--ds-color-text-secondary)]">
-                  {timeAgo(notification.created_at)}
-                </span>
-              </button>
+            groupByDay(notifications).map((group) => (
+              <div key={group.heading}>
+                <p className="w-full px-[1.25rem] py-[0.5rem] text-[0.75rem] font-medium uppercase tracking-[0.025rem] [background-color:var(--color-gray-100)] [color:var(--color-gray-600)]">
+                  {group.heading}
+                </p>
+
+                {group.rows.map((notification) => {
+                  const isCancelled = /cancelled|ignore the earlier/i.test(notification.message)
+
+                  return (
+                    <button
+                      key={notification.notification_id}
+                      type="button"
+                      onClick={() => openEvent(notification)}
+                      className={cn(
+                        'flex w-full cursor-pointer items-start gap-[0.75rem] border-b px-[1.25rem] py-[0.75rem] text-left',
+                        'hover:[background-color:var(--color-gray-50)]',
+                        !notification.is_read && '[background-color:var(--color-blue-50)]',
+                      )}
+                    >
+                      <span
+                        aria-hidden
+                        className="mt-[0.125rem] grid size-[2.25rem] shrink-0 place-items-center rounded-full"
+                        style={{
+                          backgroundColor: isCancelled ? 'var(--color-red-50)' : 'var(--color-blue-50)',
+                        }}
+                      >
+                        {isCancelled ? (
+                          <CalendarX2
+                            className="size-[1.125rem]"
+                            strokeWidth={1.8}
+                            style={{ color: 'var(--color-red-600)' }}
+                          />
+                        ) : (
+                          <CalendarDays
+                            className="size-[1.125rem]"
+                            strokeWidth={1.8}
+                            style={{ color: 'var(--color-blue-600)' }}
+                          />
+                        )}
+                      </span>
+
+                      <span className="flex min-w-0 flex-1 flex-col gap-[0.125rem]">
+                        <span
+                          className={cn(
+                            'whitespace-normal text-[0.875rem] font-normal leading-[1.25rem]',
+                            notification.is_read
+                              ? '[color:var(--color-gray-700)]'
+                              : '[color:var(--color-gray-800)]',
+                          )}
+                        >
+                          {notification.message}
+                        </span>
+                        <span className="mt-[0.125rem] text-[0.75rem] font-medium [color:var(--color-gray-500)]">
+                          {relativeTime(notification.created_at)}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             ))
           )}
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -18,7 +19,7 @@ import ReviewChangesDialog from '../../components/ReviewChangesDialog'
 import { countAudience, diffAudience } from '../../services/audience'
 import { deadlineItems } from '../../services/jobs'
 import { newDraftOn } from '../../services/tpoEvents'
-import { onOpenEventRequest } from '../../services/store'
+import { onOpenEventRequest, onWindowFocus } from '../../services/store'
 import {
   cancelEvent,
   createEvent,
@@ -46,6 +47,7 @@ interface CalendarPageProps {
 }
 
 const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarPageProps) => {
+  const navigate = useNavigate()
   const [month, setMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(new Date())
   const [view, setView] = useState<CalendarView>('month')
@@ -73,6 +75,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   }, [])
 
   useEffect(() => onOpenEventRequest((eventId) => setOpenedId(eventId)), [])
+
+  useEffect(() => onWindowFocus(refresh), [])
 
   useEffect(() => {
     if (!toast) return
@@ -305,8 +309,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
             <div className="flex items-center gap-2">
             {isTpo && (
-              <Button variant="ghost" size="sm" onClick={() => setWiping(true)}>
-                <Trash2 className="size-3.5" />
+              <Button variant="outline" size="sm" onClick={() => setWiping(true)}>
+                <Trash2 className="size-4" />
                 Delete all
               </Button>
             )}
@@ -373,6 +377,25 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         open={drawer.open}
         initial={drawer.draft}
         isEdit={Boolean(drawer.editing)}
+        canCancelEvent={Boolean(
+          drawer.editing &&
+            !drawer.editing.cancelledAt &&
+            drawer.editing.draft.eventType !== 'my_reminder' &&
+            drawer.editing.createdBy === SIGNED_IN_TPO,
+        )}
+        canDeleteReminder={Boolean(
+          drawer.editing && drawer.editing.draft.eventType === 'my_reminder' && drawer.editing.createdBy === SIGNED_IN_TPO,
+        )}
+        onDeleteReminder={() => {
+          const editing = drawer.editing
+          setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
+          setDeleting(editing)
+        }}
+        onCancelEvent={() => {
+          const editing = drawer.editing
+          setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
+          setCancelling(editing)
+        }}
         dayEntries={events
           .filter((event) => !event.cancelledAt && event.id !== drawer.editing?.id)
           .map((event) => ({
@@ -399,6 +422,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
       <EventDetailPanel
         event={opened}
+        onOpenJob={() => navigate(`/${role}/jobs`)}
         onClose={() => setOpenedId(null)}
         onEdit={() => opened && openEdit(opened)}
         onCancel={() => setCancelling(opened)}

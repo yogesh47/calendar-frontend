@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { CalendarPlus, Info, Link2, Lock, Wand2, X } from 'lucide-react'
+import { format } from 'date-fns'
+import { CalendarPlus, Info, Link2, Lock, Trash2, TriangleAlert, Wand2, X } from 'lucide-react'
 import { useFormik, validateYupSchema, yupToFormErrors } from 'formik'
+import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Button } from '@/components/ui/Button'
@@ -21,6 +23,7 @@ import {
 import DayPreview from '../DayPreview'
 import LinkJobDialog from '../LinkJobDialog'
 import { LIMITS } from '../../constants'
+import { overlaps } from '../../helpers/conflicts'
 import { rulesFor } from '../../helpers/tpo'
 import { batchesFor, countAudience } from '../../services/audience'
 import { eventSchema } from '../../services/eventSchema'
@@ -41,8 +44,12 @@ interface EventDrawerProps {
   open: boolean
   initial: EventDraft
   isEdit: boolean
+  canCancelEvent?: boolean
+  canDeleteReminder?: boolean
   dayEntries: DayEntry[]
   onClose: () => void
+  onCancelEvent?: () => void
+  onDeleteReminder?: () => void
   onSave: (draft: EventDraft) => void
 }
 
@@ -65,14 +72,28 @@ const Section = ({ title, caption, children }: { title: string; caption?: string
 
 const Required = () => <span className="[color:var(--ds-color-danger)]">*</span>
 
-const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: EventDrawerProps) => {
+const clock = (value: string): string =>
+  value ? format(new Date(`2000-01-01T${value}:00`), 'h:mm a') : ''
+
+const EventDrawer = ({
+  open,
+  initial,
+  isEdit,
+  canCancelEvent,
+  canDeleteReminder,
+  dayEntries,
+  onClose,
+  onCancelEvent,
+  onDeleteReminder,
+  onSave,
+}: EventDrawerProps) => {
   const [linking, setLinking] = useState(false)
 
   const form = useFormik<EventDraft>({
     initialValues: initial,
     enableReinitialize: true,
-    validateOnChange: false,
-    validateOnBlur: false,
+    validateOnChange: true,
+    validateOnBlur: true,
     validate: (values) => {
       try {
         validateYupSchema(values, eventSchema, true, { eventType: values.eventType })
@@ -94,6 +115,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
   const isReminder = draft.eventType === 'my_reminder'
   const count = rules.needsAudience ? countAudience(draft.audience) : 0
   const allDepartments = draft.audience.departments.length === DEPARTMENT_OPTIONS.length
+  const showPreview = rules.needsTime && Boolean(draft.eventDate)
   const batchOptions = BATCH_OPTIONS.filter((option) => batchesFor(draft.audience.opportunityType).includes(option.year))
 
   useEffect(() => {
@@ -102,15 +124,24 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
 
   const showErrors = form.submitCount > 0
 
+  const set = (field: string, value: unknown) => {
+    form.setFieldTouched(field, true, false)
+    form.setFieldValue(field, value)
+  }
+
   const errorFor = (field: string): string | undefined => {
-    if (!showErrors) return undefined
+    const touched = form.touched as Record<string, unknown>
+    if (!showErrors && !touched[field]) return undefined
     const errors = form.errors as Record<string, unknown>
+
     return errors[field] as string | undefined
   }
 
   const audienceError = (field: 'courses' | 'batches' | 'departments'): string | undefined => {
-    if (!showErrors) return undefined
+    const touched = form.touched.audience as Record<string, boolean> | undefined
+    if (!showErrors && !touched?.[field]) return undefined
     const errors = form.errors.audience as Record<string, string> | undefined
+
     return errors?.[field]
   }
 
@@ -163,10 +194,20 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
     })
   }
 
+  const clashes = rules.needsTime
+    ? dayEntries.filter(
+        (entry) =>
+          entry.eventDate === draft.eventDate &&
+          entry.startTime &&
+          draft.startTime &&
+          overlaps(draft.startTime, draft.endTime, entry.startTime, entry.endTime),
+      )
+    : []
+
   const setStartDate = (value: string) => {
     const shift = dayShift(draft.eventDate, draft.endDate)
-    form.setFieldValue('eventDate', value)
-    form.setFieldValue('endDate', addDaysTo(value, shift))
+    set('eventDate', value)
+    set('endDate', addDaysTo(value, shift))
   }
 
   const close = () => onClose()
@@ -178,7 +219,10 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
       {open && <div className="fixed inset-0 z-40 bg-black/50" aria-hidden />}
     <Dialog open={open} modal={false} onOpenChange={(next) => !next && close()}>
       <DialogContent
-        className="max-h-[92vh] w-[min(68rem,96vw)] max-w-none gap-0 p-0 [background-color:var(--ds-color-bg-surface)]"
+        className={cn(
+          'max-h-[92vh] max-w-none gap-0 p-0 [background-color:var(--ds-color-bg-surface)]',
+          showPreview ? 'w-[min(68rem,96vw)]' : 'w-[min(34rem,94vw)]',
+        )}
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader className="px-4 pb-3 pt-4">
@@ -194,7 +238,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
             </div>
 
             {!isEdit && (
-              <Button type="button" variant="outline" size="sm" className="mr-8" onClick={fillDummy}>
+              <Button type="button" variant="outline" size="sm" className="mr-16" onClick={fillDummy}>
                 <Wand2 className="size-3.5" />
                 Fill Data
               </Button>
@@ -202,7 +246,12 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
           </div>
         </DialogHeader>
 
-        <div className="grid max-h-[70vh] gap-3 overflow-hidden px-4 pb-4 pt-3 [background-color:var(--ds-color-bg-app)] lg:grid-cols-[1fr_24rem]">
+        <div
+          className={cn(
+            'grid max-h-[70vh] gap-3 overflow-hidden px-4 pb-4 pt-3 [background-color:var(--ds-color-bg-app)]',
+            showPreview && 'lg:grid-cols-[1fr_24rem]',
+          )}
+        >
           <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
           <Section title="Event basics">
           <div className="space-y-1.5">
@@ -228,7 +277,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
               </>
             }
             name="title"
-            placeholder={isReminder ? 'Call the HR team for results' : 'Pre-Placement Talk'}
+            placeholder={isReminder ? 'Enter a short reminder title' : 'Enter the event title'}
             showCount
             maxLength={LIMITS.titleLength}
             value={draft.title}
@@ -265,7 +314,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                 onChange={setStartDate}
               />
               {errorFor('eventDate') && (
-                <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('eventDate')}</p>
+                <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('eventDate')}</p>
               )}
             </div>
 
@@ -279,13 +328,13 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                     value={draft.startTime}
                     onChange={(value) => {
                       const end = plusHour(value)
-                      form.setFieldValue('startTime', value)
-                      form.setFieldValue('endTime', end)
-                      form.setFieldValue('endDate', addDaysTo(draft.eventDate, end < value ? 1 : 0))
+                      set('startTime', value)
+                      set('endTime', end)
+                      set('endDate', addDaysTo(draft.eventDate, end < value ? 1 : 0))
                     }}
                   />
                   {errorFor('startTime') && (
-                    <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('startTime')}</p>
+                    <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('startTime')}</p>
                   )}
                 </div>
                 <div className="space-y-1.5">
@@ -300,10 +349,10 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                     yearRange={{ from: new Date().getFullYear() - 1, to: new Date().getFullYear() + 5 }}
                     value={draft.endDate || draft.eventDate}
                     hasError={Boolean(errorFor('endDate'))}
-                    onChange={(value) => form.setFieldValue('endDate', value)}
+                    onChange={(value) => set('endDate', value)}
                   />
                   {errorFor('endDate') && (
-                    <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('endDate')}</p>
+                    <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('endDate')}</p>
                   )}
                 </div>
 
@@ -311,9 +360,9 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                   <Label>
                     End Time <Required />
                   </Label>
-                  <TimeSelect value={draft.endTime} onChange={(value) => form.setFieldValue('endTime', value)} />
+                  <TimeSelect value={draft.endTime} onChange={(value) => set('endTime', value)} />
                   {errorFor('endTime') && (
-                    <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('endTime')}</p>
+                    <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('endTime')}</p>
                   )}
                 </div>
               </>
@@ -329,6 +378,21 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
 
           {rules.info && !isReminder && <InfoNote>{rules.info}</InfoNote>}
 
+          {clashes.length > 0 && (
+            <p className="flex gap-2 rounded-lg border px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [border-color:var(--ds-color-warning)] [color:var(--ds-color-warning-text)]">
+              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                {clashes.length === 1
+                  ? '1 event clashes with this time'
+                  : `${clashes.length} events clash with this time`}
+                {': '}
+                {clashes
+                  .map((entry) => `${entry.title} (${clock(entry.startTime)} – ${clock(entry.endTime)})`)
+                  .join(', ')}
+              </span>
+            </p>
+          )}
+
           </Section>
 
           {rules.needsMode && (
@@ -340,7 +404,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                 <RadioGroup
                   className="flex flex-row gap-6"
                   value={draft.mode}
-                  onValueChange={(value) => form.setFieldValue('mode', value as EventMode)}
+                  onValueChange={(value) => set('mode', value as EventMode)}
                 >
                   {MODE_OPTIONS.map((option) => (
                     <div key={option.value} className="flex items-center gap-2">
@@ -351,13 +415,13 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                     </div>
                   ))}
                 </RadioGroup>
-                {errorFor('mode') && <p className="text-sm [color:var(--ds-color-danger-text)]">{errorFor('mode')}</p>}
+                {errorFor('mode') && <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('mode')}</p>}
               </div>
 
               {draft.mode === 'offline' && (
                 <Input
                   name="venue"
-                  placeholder="Auditorium, Block A"
+                  placeholder="Enter the venue"
                   label={
                     <>
                       Venue <span className="[color:var(--ds-color-danger)]">*</span>
@@ -379,7 +443,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                       Online Platform <span className="[color:var(--ds-color-danger)]">*</span>
                     </>
                   }
-                  placeholder="Google Meet"
+                  placeholder="Enter the meeting platform"
                   hint="No meeting link is collected"
                   value={draft.onlinePlatform}
                   error={errorFor('onlinePlatform')}
@@ -421,10 +485,10 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                   placeholder="Select courses"
                   options={COURSE_OPTIONS.map((course) => ({ value: course, label: course }))}
                   value={draft.audience.courses}
-                  onChange={(courses) => form.setFieldValue('audience', { ...draft.audience, courses })}
+                  onChange={(courses) => set('audience.courses', courses)}
                 />
                 {audienceError('courses') && (
-                  <p className="text-sm [color:var(--ds-color-danger-text)]">{audienceError('courses')}</p>
+                  <p className="text-xs [color:var(--ds-color-danger-text)]">{audienceError('courses')}</p>
                 )}
               </div>
 
@@ -436,12 +500,10 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                   placeholder="Select batches"
                   options={batchOptions.map((option) => ({ value: String(option.year), label: option.label }))}
                   value={draft.audience.batches.map(String)}
-                  onChange={(batches) =>
-                    form.setFieldValue('audience', { ...draft.audience, batches: batches.map(Number) })
-                  }
+                  onChange={(batches) => set('audience.batches', batches.map(Number))}
                 />
                 {audienceError('batches') && (
-                  <p className="text-sm [color:var(--ds-color-danger-text)]">{audienceError('batches')}</p>
+                  <p className="text-xs [color:var(--ds-color-danger-text)]">{audienceError('batches')}</p>
                 )}
               </div>
 
@@ -454,7 +516,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                   placeholder="Select departments"
                   options={DEPARTMENT_OPTIONS.map((department) => ({ value: department, label: department }))}
                   value={draft.audience.departments}
-                  onChange={(departments) => form.setFieldValue('audience', { ...draft.audience, departments })}
+                  onChange={(departments) => set('audience.departments', departments)}
                 />
                 <Button
                   type="button"
@@ -470,7 +532,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                   {allDepartments ? 'Clear departments' : 'All departments'}
                 </Button>
                 {audienceError('departments') && (
-                  <p className="text-sm [color:var(--ds-color-danger-text)]">{audienceError('departments')}</p>
+                  <p className="text-xs [color:var(--ds-color-danger-text)]">{audienceError('departments')}</p>
                 )}
               </div>
 
@@ -511,7 +573,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
 
           {!isReminder && (
             <div className="space-y-1.5">
-              <Label>Linked Job (optional)</Label>
+              <Label className="block">Linked Job (optional)</Label>
 
               {draft.linkedJob ? (
                 <div className="flex items-start justify-between gap-2 rounded-md border px-3 py-2">
@@ -538,8 +600,14 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
                   </Button>
                 </div>
               ) : (
-                <Button type="button" variant="outline" size="sm" onClick={() => setLinking(true)}>
-                  + Link a Job
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-center"
+                  onClick={() => setLinking(true)}
+                >
+                  <Link2 className="size-4" />
+                  Link a Job
                 </Button>
               )}
 
@@ -558,7 +626,7 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
           />
           </div>
 
-          {rules.needsTime && draft.eventDate && (
+          {showPreview && (
             <div className="min-h-0 lg:h-full">
               <DayPreview
                 date={draft.eventDate}
@@ -580,9 +648,22 @@ const EventDrawer = ({ open, initial, isEdit, dayEntries, onClose, onSave }: Eve
           <span className="text-sm [color:var(--ds-color-text-secondary)]">
             {rules.needsAudience && count > 0 ? `${count} students will be notified` : ''}
           </span>
+
           <span className="flex gap-2">
+            {isEdit && canCancelEvent && !isReminder && (
+              <Button type="button" variant="outline" onClick={onCancelEvent}>
+                Cancel Event
+              </Button>
+            )}
+
+            {isEdit && canDeleteReminder && isReminder && (
+              <Button type="button" variant="outline" onClick={onDeleteReminder}>
+                <Trash2 className="size-4" />
+                Delete
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={close}>
-              Cancel
+              {isEdit ? 'Close' : 'Cancel'}
             </Button>
             <Button type="button" onClick={() => form.handleSubmit()}>
               {saveLabel}

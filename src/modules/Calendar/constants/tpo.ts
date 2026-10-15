@@ -131,7 +131,7 @@ export const EMPTY_DRAFT: EventDraft = {
   endDate: '',
   startTime: '',
   endTime: '',
-  mode: '',
+  mode: 'offline',
   venue: '',
   onlinePlatform: '',
   description: '',

@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import ItemTile from '../ItemTile'
 import { styleOf } from '../../helpers'
 import { coversDay, spansDays } from '../../services'
+import { lanesFor } from '../../helpers/conflicts'
 import { WEEK_HOURS } from '../../constants'
 import type { CalendarItem } from '../../types'
 
@@ -98,8 +99,10 @@ const WeekGrid = ({ week, items, onOpen, onPickDate }: WeekGridProps) => {
                 </div>
               ))}
 
-              {timedOn(day).map((item) => {
+              {timedOn(day).map((item, _index, all) => {
                 const style = styleOf(item)
+                const place = lanesFor(all).get(item.id) ?? { lane: 0, lanes: 1 }
+                const width = 100 / place.lanes
 
                 return (
                   <button
@@ -108,12 +111,14 @@ const WeekGrid = ({ week, items, onOpen, onPickDate }: WeekGridProps) => {
                     onClick={() => onOpen?.(item)}
                     title={item.title}
                     className={cn(
-                      'absolute left-[0.1875rem] right-[0.1875rem] overflow-hidden rounded-[0.25rem] border-l-[3px] px-[0.3125rem] py-[0.1875rem] text-left',
+                      'absolute overflow-hidden rounded-[0.25rem] border-l-[3px] px-[0.3125rem] py-[0.1875rem] text-left',
                       style.struck && 'line-through',
                     )}
                     style={{
                       top: `${top(item)}rem`,
                       height: `${height(item)}rem`,
+                      left: `calc(${place.lane * width}% + 0.1875rem)`,
+                      width: `calc(${width}% - 0.375rem)`,
                       borderLeftColor: style.accent,
                       background: style.surface,
                     }}

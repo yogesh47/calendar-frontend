@@ -21,14 +21,14 @@ const SIDEBAR_KEY = 'campus-calendar-sidebar'
 const NAV_BY_ROLE = {
   tpo: [
     { to: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: 'jobs', label: 'Job Listings', icon: Briefcase },
     { to: 'calendar', label: 'Campus Calendar', icon: CalendarDays },
+    { to: 'jobs', label: 'Job Listings', icon: Briefcase },
     { to: 'external-jobs', label: 'External Jobs', icon: ExternalLink },
   ],
   student: [
     { to: 'dashboard', label: 'Home', icon: LayoutDashboard },
-    { to: 'jobs', label: 'Jobs', icon: Briefcase },
     { to: 'calendar', label: 'Campus Calendar', icon: CalendarDays },
+    { to: 'jobs', label: 'Jobs', icon: Briefcase },
     { to: 'external-jobs', label: 'External Jobs', icon: ExternalLink },
   ],
 } as const

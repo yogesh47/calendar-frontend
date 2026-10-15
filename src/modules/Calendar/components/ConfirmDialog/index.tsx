@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import {
   Dialog,
@@ -29,6 +30,7 @@ const ConfirmDialog = ({ open, title, confirmLabel, onBack, onConfirm }: Confirm
           Go Back
         </Button>
         <Button variant="danger" onClick={onConfirm}>
+          {confirmLabel.toLowerCase().includes('delete') && <Trash2 className="size-4" />}
           {confirmLabel}
         </Button>
       </DialogFooter>

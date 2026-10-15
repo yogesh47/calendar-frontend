@@ -16,6 +16,7 @@ import type { TpoEvent } from '../../types/tpo'
 
 interface EventDetailPanelProps {
   event: TpoEvent | null
+  onOpenJob: () => void
   onClose: () => void
   onEdit: () => void
   onCancel: () => void
@@ -34,7 +35,7 @@ const Line = ({ label, value }: { label: string; value?: string }) => {
   )
 }
 
-const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDeleteForever }: EventDetailPanelProps) => {
+const EventDetailPanel = ({ event, onOpenJob, onClose, onEdit, onCancel, onDelete, onDeleteForever }: EventDetailPanelProps) => {
   if (!event) return null
 
   const { draft } = event
@@ -67,7 +68,7 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDelete
 
   const footer = isCancelled ? (
     isMine ? (
-      <Button variant="danger" onClick={onDeleteForever}>
+      <Button variant="outline" onClick={onDeleteForever}>
         <Trash2 className="size-4" />
         Delete permanently
       </Button>
@@ -75,6 +76,7 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDelete
   ) : isReminder ? (
     <>
       <Button variant="outline" onClick={onDelete}>
+        <Trash2 className="size-4" />
         Delete
       </Button>
       <Button onClick={onEdit}>Edit</Button>
@@ -131,33 +133,31 @@ const EventDetailPanel = ({ event, onClose, onEdit, onCancel, onDelete, onDelete
         </div>
 
         {draft.mode === 'online' && isLink(draft.onlinePlatform) && (
-          <a
-            href={draft.onlinePlatform}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex w-fit items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium hover:[background-color:var(--ds-color-bg-muted)]"
-          >
-            Open meeting link
-            <ExternalLink className="size-3.5" />
-          </a>
+          <Button asChild variant="outline" size="sm" className="w-fit">
+            <a href={draft.onlinePlatform} target="_blank" rel="noreferrer">
+              Open meeting link
+              <ExternalLink className="size-3.5" />
+            </a>
+          </Button>
         )}
 
         {draft.linkedJob && (
           <div className="rounded-md border p-3">
             <p className="text-xs font-semibold uppercase [color:var(--ds-color-text-secondary)]">Linked job</p>
-            <p className="text-sm font-medium">
-              {draft.linkedJob.kind === 'campus' ? draft.linkedJob.campusJob : draft.linkedJob.title}
-            </p>
+            {draft.linkedJob.kind === 'campus' ? (
+              <Button variant="link" className="h-auto justify-start p-0 text-sm" onClick={onOpenJob}>
+                {draft.linkedJob.campusJob}
+              </Button>
+            ) : (
+              <p className="text-sm font-medium">{draft.linkedJob.title}</p>
+            )}
             {draft.linkedJob.kind === 'external' && (
-              <a
-                href={draft.linkedJob.url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium hover:[background-color:var(--ds-color-bg-muted)]"
-              >
-                Open job
-                <ExternalLink className="size-3.5" />
-              </a>
+              <Button asChild variant="outline" size="sm" className="mt-2 w-fit">
+                <a href={draft.linkedJob.url} target="_blank" rel="noreferrer">
+                  Open job
+                  <ExternalLink className="size-3.5" />
+                </a>
+              </Button>
             )}
           </div>
         )}

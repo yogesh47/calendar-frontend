@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import ItemTile from '../ItemTile'
 import { styleOf } from '../../helpers'
 import { coversDay, spansDays } from '../../services'
+import { lanesFor } from '../../helpers/conflicts'
 import { WEEK_HOURS } from '../../constants'
 import type { CalendarItem } from '../../types'
 
@@ -19,36 +20,6 @@ const HOUR_HEIGHT = 3.5
 const minutesOf = (value: string): number => {
   const moment = new Date(value)
   return moment.getHours() * 60 + moment.getMinutes()
-}
-
-const lanesFor = (items: CalendarItem[]): Map<string, { lane: number; lanes: number }> => {
-  const sorted = [...items].sort((a, b) => minutesOf(a.startsAt) - minutesOf(b.startsAt))
-  const placed = new Map<string, { lane: number; lanes: number }>()
-  let cluster: CalendarItem[] = []
-
-  const flush = () => {
-    const lanes: CalendarItem[][] = []
-    cluster.forEach((item) => {
-      const free = lanes.findIndex(
-        (lane) => minutesOf(lane[lane.length - 1].endsAt ?? lane[lane.length - 1].startsAt) <= minutesOf(item.startsAt),
-      )
-      if (free === -1) lanes.push([item])
-      else lanes[free].push(item)
-    })
-    lanes.forEach((lane, index) => lane.forEach((item) => placed.set(item.id, { lane: index, lanes: lanes.length })))
-    cluster = []
-  }
-
-  let clusterEnd = -1
-  sorted.forEach((item) => {
-    const start = minutesOf(item.startsAt)
-    if (cluster.length && start >= clusterEnd) flush()
-    cluster.push(item)
-    clusterEnd = Math.max(clusterEnd, minutesOf(item.endsAt ?? item.startsAt))
-  })
-  if (cluster.length) flush()
-
-  return placed
 }
 
 const DayGrid = ({ day, items, onOpen, onPickDate }: DayGridProps) => {

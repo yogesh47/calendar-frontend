@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/Dialog'
 import { linkedJobSchema } from '../../services/eventSchema'
 import { CAMPUS_JOB_OPTIONS } from '../../constants/tpo'
-import { EXTERNAL_JOBS } from '../../services/jobs'
 import type { LinkedJob } from '../../types/tpo'
 
 interface LinkJobDialogProps {
@@ -35,6 +34,9 @@ const LinkJobDialog = ({ open, initial, onClose, onLink }: LinkJobDialogProps) =
   })
 
   const isExternal = form.values.kind === 'external'
+
+  const errorFor = (field: 'url' | 'title' | 'campusJob'): string | undefined =>
+    form.touched[field] || form.submitCount ? form.errors[field] : undefined
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -73,47 +75,25 @@ const LinkJobDialog = ({ open, initial, onClose, onLink }: LinkJobDialogProps) =
                     Job Link <span className="[color:var(--ds-color-danger)]">*</span>
                   </>
                 }
-                placeholder="https://careers.deloitte.com/jobs/12345"
+                placeholder="https://company-careers-site.com/jobs/12345"
                 value={form.values.url}
-                error={form.touched.url ? form.errors.url : undefined}
+                error={errorFor('url')}
                 onChange={form.handleChange}
                 onBlur={form.handleBlur}
               />
               <Input
                 name="title"
+                placeholder="Enter the job title"
                 label={
                   <>
                     Job Title <span className="[color:var(--ds-color-danger)]">*</span>
                   </>
                 }
                 value={form.values.title}
-                error={form.touched.title ? form.errors.title : undefined}
+                error={errorFor('title')}
                 onChange={form.handleChange}
                 onBlur={form.handleBlur}
               />
-              <p className="rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-bg-subtle)] [color:var(--ds-color-text-secondary)]">
-                Students will open this link in a new tab and apply on that website.
-              </p>
-
-              <div className="space-y-1.5">
-                <p className="text-sm font-medium">External jobs</p>
-                {EXTERNAL_JOBS.map((job) => (
-                  <button
-                    key={job.jobId}
-                    type="button"
-                    className="block w-full cursor-pointer rounded-md border px-3 py-2 text-left text-sm hover:[background-color:var(--ds-color-bg-muted)]"
-                    onClick={() => {
-                      form.setFieldValue('url', job.applyLink)
-                      form.setFieldValue('title', `${job.company} — ${job.title}`)
-                    }}
-                  >
-                    <span className="font-medium">{job.title}</span>
-                    <span className="block [color:var(--ds-color-text-secondary)]">
-                      {job.company} · {job.jobType}
-                    </span>
-                  </button>
-                ))}
-              </div>
             </>
           ) : (
             <div className="space-y-1.5">
@@ -122,8 +102,14 @@ const LinkJobDialog = ({ open, initial, onClose, onLink }: LinkJobDialogProps) =
                 value={form.values.campusJob}
                 placeholder="Select a job"
                 options={CAMPUS_JOB_OPTIONS.map((job) => ({ value: job, label: job }))}
-                onChange={(value) => form.setFieldValue('campusJob', value)}
+                onChange={(value) => {
+                  form.setFieldTouched('campusJob', true, false)
+                  form.setFieldValue('campusJob', value)
+                }}
               />
+              {errorFor('campusJob') && (
+                <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('campusJob')}</p>
+              )}
             </div>
           )}
         </div>
@@ -132,9 +118,7 @@ const LinkJobDialog = ({ open, initial, onClose, onLink }: LinkJobDialogProps) =
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={!form.isValid} onClick={() => form.handleSubmit()}>
-            Link Job
-          </Button>
+          <Button onClick={() => form.handleSubmit()}>Link Job</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
