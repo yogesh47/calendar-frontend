@@ -10,6 +10,9 @@ import type { CalendarItem } from '../types'
  */
 export const styleOf = (item: CalendarItem) => {
   if (item.status === 'cancelled') return { ...CANCELLED_STYLE, dashed: false, struck: true }
+  if (item.status === 'not_applicable') {
+    return { ...CANCELLED_STYLE, label: 'No longer applicable', dashed: false, struck: true }
+  }
 
   const base = CALENDAR_ITEM_STYLE[item.kind]
   const label = item.kind === 'event' && item.eventType ? EVENT_TYPE_LABEL[item.eventType] : base.label

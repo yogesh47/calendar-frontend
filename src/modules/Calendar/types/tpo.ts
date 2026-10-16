@@ -8,6 +8,7 @@ export type TpoEventType =
   | 'deadline'
   | 'other'
   | 'my_reminder'
+  | 'nudge'
 
 export type OpportunityType = 'job' | 'internship' | 'general'
 
@@ -62,6 +63,8 @@ export type TpoEvent = {
   cancelledAt?: string
   cancelReason?: CancelReason
   cancelNote?: string
+  appliesToMe: boolean
+  removedReason?: string
 }
 
 export type AudienceDiff = {

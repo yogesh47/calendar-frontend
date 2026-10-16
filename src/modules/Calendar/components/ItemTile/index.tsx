@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { styleOf } from '../../helpers'
+import { isPast, isRecentlyUpdated, styleOf } from '../../helpers'
 import type { CalendarItem } from '../../types'
 
 type ItemTileProps = {
@@ -13,6 +13,8 @@ type ItemTileProps = {
 const ItemTile = ({ item, onOpen, showTime, className }: ItemTileProps) => {
   const style = styleOf(item)
   const time = !item.isAllDay && showTime ? format(new Date(item.startsAt), 'h:mm a') : ''
+  const isUpdated = item.status === 'active' && isRecentlyUpdated(item)
+  const isOver = item.status === 'active' && isPast(item)
 
   return (
     <button
@@ -26,6 +28,7 @@ const ItemTile = ({ item, onOpen, showTime, className }: ItemTileProps) => {
         'flex w-full cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs',
         'border-l-[3px] transition-colors hover:brightness-95',
         style.dashed && 'border-l-0 border border-dashed',
+        isOver && 'opacity-60',
         className,
       )}
       style={{ backgroundColor: style.surface, borderColor: style.accent }}
@@ -37,8 +40,17 @@ const ItemTile = ({ item, onOpen, showTime, className }: ItemTileProps) => {
         </span>
       )}
       <span className={cn('truncate', style.struck && 'line-through [color:var(--ds-color-text-tertiary)]')}>
-        {style.struck ? `Cancelled: ${item.title}` : item.title}
+        {style.struck ? `${style.label}: ${item.title}` : item.title}
       </span>
+
+      {isUpdated && (
+        <span
+          className="ml-auto shrink-0 rounded-full px-1.5 text-[0.5625rem] font-bold uppercase"
+          style={{ backgroundColor: style.accent, color: 'white' }}
+        >
+          Updated
+        </span>
+      )}
     </button>
   )
 }

@@ -5,6 +5,7 @@ import LoginPage from '@/modules/Auth/pages/LoginPage'
 import JobListPage from '@/modules/Jobs/pages/JobListPage'
 import RequireAuth from '@/modules/Auth/components/RequireAuth'
 import CalendarPage from '@/modules/Calendar/pages/CalendarPage'
+import SettingsPage from '@/modules/Settings/pages/SettingsPage'
 import DashboardPage from '@/modules/Dashboard/pages/DashboardPage'
 import ExternalJobsPage from '@/modules/Jobs/pages/ExternalJobsPage'
 import { useSession } from '@/modules/Auth/hooks'
@@ -27,7 +28,7 @@ const App = () => {
     </RequireAuth>
   )
 
-  const pagesFor = (role: Role) => [
+  const pagesFor = (role: 'tpo' | 'student') => [
     { path: `/${role}/dashboard`, element: <DashboardPage role={role} userName={session?.user.name ?? ''} /> },
     { path: `/${role}/jobs`, element: <JobListPage /> },
     { path: `/${role}/calendar`, element: <CalendarPage role={role} /> },
@@ -42,11 +43,13 @@ const App = () => {
         <Route path={LOGIN_ROUTE} element={<LoginPage session={session} onSignedIn={signIn} />} />
         <Route path="/" element={<Navigate to={landing} replace />} />
 
-        {(['tpo', 'student'] as Role[]).flatMap((role) =>
+        {(['tpo', 'student'] as const).flatMap((role) =>
           pagesFor(role).map((page) => (
             <Route key={page.path} path={page.path} element={guarded(role, page.element)} />
           )),
         )}
+
+        <Route path="/super-admin/settings" element={guarded('super_admin', <SettingsPage />)} />
 
         <Route path="*" element={<Navigate to={landing} replace />} />
       </Routes>

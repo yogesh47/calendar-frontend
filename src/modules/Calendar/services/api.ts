@@ -9,6 +9,7 @@ export type ApiNotification = {
   message: string
   created_at: string
   is_read: boolean
+  kind: string
 }
 
 type ApiEvent = {
@@ -45,6 +46,8 @@ type ApiEvent = {
   linked_type: string | null
   linked_id: string | null
   is_owner: boolean
+  applies_to_me: boolean
+  removed_reason: string | null
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -77,6 +80,8 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
   cancelledAt: entry.cancelled_at ?? undefined,
   cancelReason: (entry.cancel_reason as TpoEvent['cancelReason']) ?? undefined,
   cancelNote: entry.cancel_note ?? undefined,
+  appliesToMe: entry.applies_to_me,
+  removedReason: entry.removed_reason ?? undefined,
   draft: {
     ...EMPTY_DRAFT,
     eventType: entry.event_type as EventDraft['eventType'],

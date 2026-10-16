@@ -7,11 +7,10 @@ interface LegendProps {
   onToggle: (kind: string) => void
 }
 
+const SHOWN_KINDS: CalendarItemKind[] = ['event', 'deadline', 'reminder']
+
 const ENTRIES = [
-  ...(Object.keys(CALENDAR_ITEM_STYLE) as CalendarItemKind[]).map((kind) => ({
-    key: kind as string,
-    ...CALENDAR_ITEM_STYLE[kind],
-  })),
+  ...SHOWN_KINDS.map((kind) => ({ key: kind as string, ...CALENDAR_ITEM_STYLE[kind] })),
   { key: 'cancelled', ...CANCELLED_STYLE },
 ]
 

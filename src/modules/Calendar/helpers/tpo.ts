@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { LIMITS } from '../constants'
 import { countAudience } from '../services/audience'
 import { EVENT_TYPE_OPTIONS, MINOR_FIELDS, IMPORTANT_FIELD_LABEL } from '../constants/tpo'
-import type { CalendarItem, EventType } from '../types'
+import type { CalendarItem, CalendarItemKind, EventType } from '../types'
 import type { EventDraft, TpoEvent, TpoEventType } from '../types/tpo'
 
 export const rulesFor = (eventType: TpoEventType) =>
@@ -94,6 +94,7 @@ const TILE_EVENT_TYPE: Record<TpoEventType, EventType> = {
   deadline: 'other',
   other: 'other',
   my_reminder: 'other',
+  nudge: 'other',
 }
 
 const instant = (day: string, time: string): string =>
@@ -102,18 +103,24 @@ const instant = (day: string, time: string): string =>
 export const itemFromEvent = (event: TpoEvent): CalendarItem => {
   const { draft } = event
   const rules = rulesFor(draft.eventType)
-  const kind =
-    draft.eventType === 'my_reminder' ? 'reminder' : draft.eventType === 'deadline' ? 'deadline' : 'event'
+  const kind: CalendarItemKind =
+    draft.eventType === 'nudge'
+      ? 'nudge'
+      : draft.eventType === 'my_reminder'
+        ? 'reminder'
+        : draft.eventType === 'deadline'
+          ? 'deadline'
+          : 'event'
 
   return {
     id: event.id,
     kind,
     title: draft.title,
     startsAt: instant(draft.eventDate, draft.startTime),
-    endsAt: rules.needsTime ? instant(draft.endDate || draft.eventDate, draft.endTime) : undefined,
-    isAllDay: !rules.needsTime && !draft.startTime,
+    endsAt: rules.needsTime && kind !== 'nudge' ? instant(draft.endDate || draft.eventDate, draft.endTime) : undefined,
+    isAllDay: kind === 'nudge' ? false : !rules.needsTime && !draft.startTime,
     eventType: kind === 'event' ? TILE_EVENT_TYPE[draft.eventType] : undefined,
-    status: event.cancelledAt ? 'cancelled' : 'active',
+    status: event.cancelledAt ? 'cancelled' : event.appliesToMe ? 'active' : 'not_applicable',
     updatedAt: event.updatedAt,
     venue: draft.mode === 'online' ? draft.onlinePlatform : draft.venue || undefined,
     description: draft.description || undefined,

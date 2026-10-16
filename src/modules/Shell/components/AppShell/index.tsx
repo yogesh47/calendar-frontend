@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Briefcase, CalendarDays, ExternalLink, LayoutDashboard, PanelLeft } from 'lucide-react'
+import { Briefcase, CalendarDays, ExternalLink, LayoutDashboard, PanelLeft, SlidersHorizontal } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { TooltipProvider } from '@/components/ui/TooltipProvider'
 import AccountMenu from '../AccountMenu'
+import RemindersPopup from '../RemindersPopup'
 import NotificationBell from '../NotificationBell'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
-import type { AuthUser } from '@/modules/Auth/types'
+import type { AuthUser, Role } from '@/modules/Auth/types'
 
 interface AppShellProps {
-  role: 'tpo' | 'student'
+  role: Role
   user: AuthUser
   children: ReactNode
   onSignOut?: () => void
@@ -31,6 +32,7 @@ const NAV_BY_ROLE = {
     { to: 'jobs', label: 'Jobs', icon: Briefcase },
     { to: 'external-jobs', label: 'External Jobs', icon: ExternalLink },
   ],
+  super_admin: [{ to: 'settings', label: 'Calendar & Nudges', icon: SlidersHorizontal }],
 } as const
 
 const readExpanded = (): boolean => {
@@ -43,6 +45,7 @@ const readExpanded = (): boolean => {
 
 const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
   const { pathname } = useLocation()
+  const basePath = role === 'super_admin' ? 'super-admin' : role
   const [expanded, setExpanded] = useState(readExpanded)
 
   useEffect(() => {
@@ -55,6 +58,7 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
 
   return (
     <TooltipProvider delayDuration={120}>
+      {role !== 'super_admin' && <RemindersPopup role={role} />}
       <div className="flex min-h-screen [background-color:var(--ds-color-bg-app)]">
         <aside
           className={cn(
@@ -71,7 +75,7 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
           </div>
 
           {NAV_BY_ROLE[role].map((item) => {
-            const path = `/${role}/${item.to}`
+            const path = `/${basePath}/${item.to}`
             const isActive = pathname === path
 
             return (
@@ -117,7 +121,7 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center justify-end gap-3 border-b px-5 [background-color:var(--ds-color-bg-surface)]">
-            <NotificationBell />
+            {role !== 'super_admin' && <NotificationBell />}
             <AccountMenu user={user} onSignOut={onSignOut} />
           </header>
 

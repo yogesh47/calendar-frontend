@@ -160,7 +160,7 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
                         {format(new Date(item.startsAt), 'h:mm a')}
                       </span>
                       <span className={cn('block truncate text-xs font-medium', style.struck && 'line-through')}>
-                        {style.struck ? `Cancelled: ${item.title}` : item.title}
+                        {style.struck ? `${style.label}: ${item.title}` : item.title}
                       </span>
                     </button>
                   )

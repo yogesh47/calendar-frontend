@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CAMPUS_JOBS, EXTERNAL_JOBS } from '@/modules/Calendar/services/jobs'
 import { fetchEvents } from '@/modules/Calendar/services/api'
+import UpdatesFeed from '../../components/UpdatesFeed'
 import type { TpoEvent } from '@/modules/Calendar/types/tpo'
 
 interface DashboardPageProps {
@@ -28,7 +29,7 @@ const DashboardPage = ({ role, userName }: DashboardPageProps) => {
     <div className="flex w-full flex-col gap-4 p-6">
       <div>
         <h1 className="text-xl font-semibold">Hello, {userName}</h1>
-        <p className="text-sm [color:var(--ds-color-text-secondary)]">Yahan se poora placement ka haal dikhta hai</p>
+        <p className="text-sm [color:var(--ds-color-text-secondary)]">Everything about your placements, in one place</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -39,6 +40,8 @@ const DashboardPage = ({ role, userName }: DashboardPageProps) => {
           </div>
         ))}
       </div>
+
+      {role === 'student' && <UpdatesFeed role={role} />}
     </div>
   )
 }

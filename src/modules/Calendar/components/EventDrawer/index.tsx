@@ -278,7 +278,7 @@ const EventDrawer = ({
           )}
 
 
-          {isReminder && (
+          {isReminder && !reminderOnly && (
             <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
           )}
 
@@ -388,7 +388,7 @@ const EventDrawer = ({
             )}
           </div>
 
-          {reminderOnly && (
+          {isReminder && (
             <div className="space-y-1.5">
               <Label>Remind me</Label>
               <Combobox

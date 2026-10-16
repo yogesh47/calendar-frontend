@@ -27,7 +27,7 @@ const ListView = ({ month, items, onOpen }: {
   if (!days.length) {
     return (
       <div className="rounded-[0.75rem] border bg-card p-[2rem] text-center text-sm text-muted-foreground">
-        Is mahine ke liye kuch nahi hai.
+        Nothing scheduled this month.
       </div>
     )
   }

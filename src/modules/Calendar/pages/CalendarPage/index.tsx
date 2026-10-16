@@ -19,7 +19,6 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import EventDetailPanel from '../../components/EventDetailPanel'
 import ReviewChangesDialog from '../../components/ReviewChangesDialog'
 import { countAudience, diffAudience } from '../../services/audience'
-import { deadlineItems } from '../../services/jobs'
 import { newDraftOn } from '../../services/tpoEvents'
 import { onOpenEventRequest, onWindowFocus } from '../../services/store'
 import {
@@ -133,6 +132,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
 
   const visible = useMemo(() => {
     const fromEvents = events
+      .filter((event) => event.draft.eventType !== 'nudge')
+      .filter((event) => !filters.createdByMe || event.draft.eventType !== 'deadline')
       .filter((event) => isTpo || event.cancelReason !== 'created_by_mistake')
       .filter((event) => event.draft.eventType !== 'my_reminder' || event.createdBy === SIGNED_IN_TPO)
       .filter((event) => !filters.types.length || filters.types.includes(event.draft.eventType))
@@ -153,8 +154,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
       )
       .map(itemFromEvent)
 
-    const seeded = filters.createdByMe ? [] : deadlineItems()
-    const all = [...seeded, ...fromEvents]
+    const all = fromEvents
 
     if (!filters.kinds.length) return all
 
@@ -170,7 +170,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
       open: true,
       draft: isTpo
         ? newDraftOn(eventDate)
-        : { ...newDraftOn(eventDate), eventType: 'my_reminder', mode: '', endTime: '' },
+        : { ...newDraftOn(eventDate), eventType: 'my_reminder', mode: '', endTime: '', remindBefore: '1_hour' },
       editing: null,
     })
 
@@ -538,13 +538,36 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
           setOpenedId(null)
           navigate(`/${role}/jobs`)
         }}
+        onOpenJobForDeadline={
+          !isTpo && opened?.draft.eventType === 'deadline'
+            ? () => {
+                setOpenedId(null)
+                navigate(`/${role}/jobs`)
+              }
+            : undefined
+        }
+        onOpenLinked={() => {
+          const linked = opened?.draft
+          if (!linked?.linkedId) return
+          if (linked.linkedType === 'job_deadline') {
+            setOpenedId(null)
+            navigate(`/${role}/jobs`)
+            return
+          }
+          setOpenedId(linked.linkedId)
+        }}
         onClose={() => setOpenedId(null)}
         onEdit={() => opened && openEdit(opened)}
         onCancel={() => setCancelling(opened)}
         onDelete={() => setDeleting(opened)}
         onDeleteForever={() => setPurging(opened)}
         onRemindMe={
-          !isTpo && opened && opened.draft.eventType !== 'my_reminder' && !opened.cancelledAt
+          !isTpo &&
+          opened &&
+          opened.draft.eventType !== 'my_reminder' &&
+          opened.draft.eventType !== 'nudge' &&
+          opened.appliesToMe &&
+          !opened.cancelledAt
             ? () => remindMe(opened)
             : undefined
         }

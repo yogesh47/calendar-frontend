@@ -68,7 +68,7 @@ const DayAgenda = ({ day, items, hiddenCount, onOpen }: DayAgendaProps) => (
                     style.struck && 'line-through [color:var(--ds-color-text-tertiary)]',
                   )}
                 >
-                  {style.struck ? `Cancelled: ${item.title}` : item.title}
+                  {style.struck ? `${style.label}: ${item.title}` : item.title}
                 </span>
                 <span className="block truncate text-xs [color:var(--ds-color-text-secondary)]">
                   {style.label}

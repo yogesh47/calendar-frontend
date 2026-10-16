@@ -22,7 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog'
-import { audienceLine, labelFor, rulesFor } from '../../helpers/tpo'
+import { isRecentlyUpdated } from '../../helpers'
+import { audienceLine, itemFromEvent, labelFor, rulesFor } from '../../helpers/tpo'
 import { hasText, safeHtml } from '../../helpers/richText'
 import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '../../constants'
 import { CANCEL_REASON_LABEL, SIGNED_IN_TPO } from '../../constants/tpo'
@@ -33,6 +34,8 @@ import type { TpoEvent } from '../../types/tpo'
 interface EventDetailPanelProps {
   event: TpoEvent | null
   onOpenJob: () => void
+  onOpenLinked?: () => void
+  onOpenJobForDeadline?: () => void
   onClose: () => void
   onEdit: () => void
   onCancel: () => void
@@ -61,6 +64,8 @@ const Row = ({ icon: Icon, label, children }: { icon: LucideIcon; label: string;
 const EventDetailPanel = ({
   event,
   onOpenJob,
+  onOpenLinked,
+  onOpenJobForDeadline,
   onClose,
   onEdit,
   onCancel,
@@ -79,13 +84,14 @@ const EventDetailPanel = ({
   const lastDay = draft.endDate && draft.endDate !== draft.eventDate ? new Date(`${draft.endDate}T00:00:00`) : null
   const isPast = Boolean(day && day.getTime() < new Date().setHours(0, 0, 0, 0))
 
-  const clock = (value: string): string => format(new Date(`2000-01-01T${value}:00`), 'h:mm a')
+  const clock = (value: string): string => (value ? format(new Date(`2000-01-01T${value}:00`), 'h:mm a') : '')
 
-  const timeLine = rules.needsTime
-    ? `${clock(draft.startTime)} – ${clock(draft.endTime)}`
-    : draft.startTime
-      ? clock(draft.startTime)
-      : 'All day'
+  const timeLine =
+    rules.needsTime && draft.startTime && draft.endTime
+      ? `${clock(draft.startTime)} – ${clock(draft.endTime)}`
+      : draft.startTime
+        ? clock(draft.startTime)
+        : 'All day'
 
   const isLink = (value: string): boolean => value.startsWith('http://') || value.startsWith('https://')
 
@@ -98,8 +104,17 @@ const EventDetailPanel = ({
         ? `Offline · ${draft.venue}`
         : undefined
 
-  const kind = isReminder ? 'reminder' : draft.eventType === 'deadline' ? 'deadline' : 'event'
-  const chip = isCancelled ? CANCELLED_STYLE : CALENDAR_ITEM_STYLE[kind]
+  const isNudge = draft.eventType === 'nudge'
+  const isGone = !event.appliesToMe
+  const kind = isNudge
+    ? 'nudge'
+    : isReminder
+      ? 'reminder'
+      : draft.eventType === 'deadline'
+        ? 'deadline'
+        : 'event'
+  const chip = isCancelled || isGone ? CANCELLED_STYLE : CALENDAR_ITEM_STYLE[kind]
+  const wasUpdated = !isCancelled && !isGone && isRecentlyUpdated(itemFromEvent(event))
 
   const dateLine = day
     ? lastDay
@@ -107,9 +122,17 @@ const EventDetailPanel = ({
       : format(day, 'EEE, MMM d, yyyy')
     : undefined
 
-  const subtitle = [labelFor(draft.eventType), draft.company].filter(Boolean).join(' · ')
+  const subtitle = isNudge
+    ? CALENDAR_ITEM_STYLE.nudge.label
+    : [labelFor(draft.eventType), draft.company].filter(Boolean).join(' · ')
 
-  const footer = isCancelled ? (
+  const footer = isNudge ? (
+    draft.linkedId ? (
+      <Button variant="outline" onClick={onOpenLinked}>
+        {draft.linkedType === 'job_deadline' ? 'View & Apply' : 'Go to the event'}
+      </Button>
+    ) : null
+  ) : isCancelled ? (
     isMine ? (
       <Button variant="outline" onClick={onDeleteForever}>
         <Trash2 className="size-4" />
@@ -124,11 +147,16 @@ const EventDetailPanel = ({
       </Button>
       <Button onClick={onEdit}>Edit</Button>
     </>
-  ) : onRemindMe ? (
-    <Button variant="outline" onClick={onRemindMe}>
-      <BellPlus className="size-4" />
-      Remind me
-    </Button>
+  ) : onRemindMe || onOpenJobForDeadline ? (
+    <>
+      {onRemindMe && (
+        <Button variant="outline" onClick={onRemindMe}>
+          <BellPlus className="size-4" />
+          Remind me
+        </Button>
+      )}
+      {onOpenJobForDeadline && <Button onClick={onOpenJobForDeadline}>View &amp; Apply</Button>}
+    </>
   ) : isMine ? (
     <>
       <Button variant="outline" onClick={onCancel}>
@@ -143,16 +171,7 @@ const EventDetailPanel = ({
       <div className="fixed inset-0 z-40 bg-black/50" aria-hidden />
       <Dialog open modal={false} onOpenChange={(next) => !next && onClose()}>
         <DialogContent className="max-h-[90vh] w-[min(34rem,94vw)] max-w-none gap-0 p-0 [background-color:var(--ds-color-bg-surface)]">
-          <DialogHeader className="space-y-1 border-b px-5 pb-4 pr-12 pt-5">
-            <div className="flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="size-[0.625rem] shrink-0 rounded-sm"
-                style={{ backgroundColor: chip.accent }}
-              />
-              <DialogDescription className="text-[0.8125rem]">{subtitle}</DialogDescription>
-            </div>
-
+          <DialogHeader className="space-y-1.5 border-b px-5 pb-4 pr-12 pt-5">
             <DialogTitle
               className={cn(
                 'text-[1.125rem] leading-[1.625rem]',
@@ -161,9 +180,49 @@ const EventDetailPanel = ({
             >
               {draft.title}
             </DialogTitle>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="size-[0.625rem] shrink-0 rounded-sm"
+                style={{ backgroundColor: chip.accent }}
+              />
+              <DialogDescription className="text-[0.8125rem]">{subtitle}</DialogDescription>
+
+              {isGone && !isCancelled && (
+                <span
+                  className="rounded-full px-[0.5rem] py-[0.0625rem] text-[0.6875rem] font-semibold"
+                  style={{ backgroundColor: CANCELLED_STYLE.surface, color: CANCELLED_STYLE.accent }}
+                >
+                  No longer applicable
+                </span>
+              )}
+
+              {wasUpdated && (
+                <span
+                  className="rounded-full px-[0.5rem] py-[0.0625rem] text-[0.6875rem] font-semibold"
+                  style={{ backgroundColor: chip.surface, color: chip.accent }}
+                >
+                  Updated
+                </span>
+              )}
+            </div>
           </DialogHeader>
 
           <div className="max-h-[60vh] space-y-2.5 overflow-y-auto px-5 py-4">
+            {isGone && !isCancelled && (
+              <p className="mb-3.5 rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-bg-subtle)] [color:var(--ds-color-text-secondary)]">
+                This event no longer applies to you.
+                {event.removedReason ? ` ${event.removedReason}` : ''}
+              </p>
+            )}
+
+            {wasUpdated && (
+              <p className="mb-3.5 text-sm [color:var(--ds-color-text-secondary)]">
+                Updated on {format(new Date(event.updatedAt as string), 'd MMM, h:mm a')}
+              </p>
+            )}
+
             {isCancelled && (
               <p className="mb-3.5 rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-danger-subtle)] [color:var(--ds-color-danger-text)]">
                 Cancelled by {isMine ? 'you' : event.createdByName} ·{' '}
@@ -174,7 +233,9 @@ const EventDetailPanel = ({
             )}
 
             <Row icon={CalendarDays} label="Date">{dateLine}</Row>
-            <Row icon={Clock} label="Time">{isReminder && !draft.startTime ? 'All day' : timeLine}</Row>
+            <Row icon={Clock} label="Time">
+              {isNudge ? clock(draft.startTime) : isReminder && !draft.startTime ? 'All day' : timeLine}
+            </Row>
             <Row icon={MapPin} label="Venue">
               {venueLine && (
                 <span className="flex flex-wrap items-center gap-2">
@@ -190,8 +251,8 @@ const EventDetailPanel = ({
                 </span>
               )}
             </Row>
-            {rules.needsAudience && <Row icon={Users} label="Audience">{audienceLine(draft)}</Row>}
-            {rules.needsAudience && (
+            {!isNudge && rules.needsAudience && <Row icon={Users} label="Audience">{audienceLine(draft)}</Row>}
+            {!isNudge && rules.needsAudience && (
               <Row icon={BellRing} label="Notified">{`${event.notifiedCount} students`}</Row>
             )}
 
@@ -232,12 +293,16 @@ const EventDetailPanel = ({
             )}
 
             <div className="pt-1.5 text-[0.75rem] [color:var(--ds-color-text-secondary)]">
+              {isNudge ? (
+                <p>Sent by 7Seers · {format(new Date(event.createdAt), 'd MMM, h:mm a')}</p>
+              ) : (
               <p>
                 Created by {isMine ? 'you' : `${event.createdByName} (TPO)`} ·{' '}
                 {format(new Date(event.createdAt), 'd MMM, h:mm a')}
                 {event.updatedAt ? ` · updated ${format(new Date(event.updatedAt), 'd MMM, h:mm a')}` : ''}
               </p>
-              {!isMine && !isReminder && !isCancelled && (
+              )}
+              {!isNudge && !isMine && !isReminder && !isCancelled && (
                 <p>View only. Only {event.createdByName} can edit or cancel this event.</p>
               )}
             </div>

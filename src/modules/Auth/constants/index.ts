@@ -7,6 +7,7 @@ export const LOGIN_ROUTE = '/login'
 export const HOME_BY_ROLE = {
   tpo: '/tpo/calendar',
   student: '/student/calendar',
+  super_admin: '/super-admin/settings',
 } as const
 
 export const LOGIN_COPY = {
