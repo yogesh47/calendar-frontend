@@ -45,7 +45,16 @@ export const login = async (email: string, password: string): Promise<Session> =
   return { token: payload.access_token, user: payload.user }
 }
 
-export const fetchMe = async (token: string): Promise<Session['user'] | null> => {
+// StrictMode dev me effect do baar chalata hai; ek hi waqt ki call share kar lete hain.
+let meInFlight: Promise<Session['user'] | null> | null = null
+
+export const fetchMe = (token: string): Promise<Session['user'] | null> => {
+  if (!meInFlight) meInFlight = askMe(token).finally(() => { meInFlight = null })
+
+  return meInFlight
+}
+
+const askMe = async (token: string): Promise<Session['user'] | null> => {
   const response = await fetch(`${API_BASE_URL}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
   })

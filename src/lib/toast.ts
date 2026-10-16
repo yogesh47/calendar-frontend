@@ -7,6 +7,8 @@ import type { ToastTone } from '@/components/custom/AppToast'
 
 const FALLBACK_MESSAGE = 'Something went wrong. Please try again.'
 
+// Ek hi message baar-baar aaye (jaise DB down par har call fail ho) to naya toast
+// nahi banta — wahi toast update ho jaata hai. Isi liye id message se banti hai.
 const raise = (tone: ToastTone, duration: number) => (message: string): string =>
   toast.custom(
     (entry: Toast) =>
@@ -16,7 +18,7 @@ const raise = (tone: ToastTone, duration: number) => (message: string): string =
         onDismiss: () => toast.dismiss(entry.id),
         className: entry.visible ? 'animate-enter' : 'animate-leave',
       }),
-    { duration },
+    { duration, id: `${tone}:${message}` },
   )
 
 export const showSuccess = raise('success', 3000)

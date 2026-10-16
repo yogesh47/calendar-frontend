@@ -172,7 +172,8 @@ const toPayload = (draft: EventDraft) => ({
     : null,
 })
 
-export const fetchEvents = async (): Promise<TpoEvent[]> => (await ask<ApiEvent[]>('/calendar/events')).map(toEvent)
+export const fetchEvents = (): Promise<TpoEvent[]> =>
+  share('events', async () => (await ask<ApiEvent[]>('/calendar/events')).map(toEvent))
 
 export const applyToJob = (jobId: string): Promise<{ application_id: string }> =>
   ask<{ application_id: string }>(`/calendar/jobs/${jobId}/apply`, { method: 'POST' })
@@ -180,8 +181,9 @@ export const applyToJob = (jobId: string): Promise<{ application_id: string }> =
 export const fetchComingUp = async (limit = 3): Promise<TpoEvent[]> =>
   (await ask<ApiEvent[]>(`/calendar/coming-up?limit=${limit}`)).map(toEvent)
 
+// Web par alag call ki zaroorat nahi — wahi list jo bell use karti hai, usi se ginti.
 export const fetchUnreadCount = async (): Promise<number> =>
-  (await ask<{ unread: number }>('/calendar/notifications/unread-count')).unread
+  (await fetchNotifications()).filter((entry) => !entry.is_read).length
 
 export const createEvent = async (draft: EventDraft): Promise<TpoEvent> =>
   toEvent(await ask<ApiEvent>('/calendar/events', { method: 'POST', body: JSON.stringify(toPayload(draft)) }))
@@ -205,7 +207,8 @@ export const deleteReminder = (eventId: string): Promise<void> =>
 export const deleteAllEvents = (): Promise<{ count: number }> =>
   ask<{ count: number }>('/calendar/events?confirm=yes', { method: 'DELETE' })
 
-export const fetchNotifications = (): Promise<ApiNotification[]> => ask<ApiNotification[]>('/calendar/notifications')
+export const fetchNotifications = (): Promise<ApiNotification[]> =>
+  share('notifications', () => ask<ApiNotification[]>('/calendar/notifications'))
 
 export const readNotification = (notificationId: string): Promise<void> =>
   ask<void>(`/calendar/notifications/${notificationId}/read`, { method: 'POST' })
@@ -213,12 +216,43 @@ export const readNotification = (notificationId: string): Promise<void> =>
 export const readAllNotifications = (): Promise<void> =>
   ask<void>('/calendar/notifications/read-all', { method: 'POST' })
 
+// Poore app ke liye ek hi SSE connection. Har component apna EventSource kholta
+// tha, to ek page par chaar stream aur chaar baar wahi fetch chal jaati thi.
+let stream: EventSource | null = null
+
+const listeners = new Set<() => void>()
+
+const fanOut = () => listeners.forEach((listener) => listener())
+
 export const openCalendarStream = (onChange: () => void): (() => void) => {
   const session = readSession()
   if (!session) return () => undefined
 
-  const source = new EventSource(`${API_BASE_URL}/calendar/stream?token=${encodeURIComponent(session.token)}`)
-  source.addEventListener('calendar', onChange)
+  listeners.add(onChange)
 
-  return () => source.close()
+  if (!stream) {
+    stream = new EventSource(`${API_BASE_URL}/calendar/stream?token=${encodeURIComponent(session.token)}`)
+    stream.addEventListener('calendar', fanOut)
+  }
+
+  return () => {
+    listeners.delete(onChange)
+    if (listeners.size === 0 && stream) {
+      stream.close()
+      stream = null
+    }
+  }
 }
+
+// Ek hi waqt par chali hui request dobara nahi jaati — sab wahi jawab use karte hain.
+const share = <T,>(key: string, call: () => Promise<T>): Promise<T> => {
+  const running = inFlight.get(key) as Promise<T> | undefined
+  if (running) return running
+
+  const started = call().finally(() => inFlight.delete(key))
+  inFlight.set(key, started)
+
+  return started
+}
+
+const inFlight = new Map<string, Promise<unknown>>()
