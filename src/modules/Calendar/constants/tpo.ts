@@ -57,9 +57,10 @@ export const EVENT_TYPE_OPTIONS: {
     needsMode: false,
     needsAudience: false,
     needsCompany: false,
-    info: 'Only you can see this. No students are notified.',
   },
 ]
+
+export const REMINDER_PRIVACY = 'Only you can see this. No students are notified.'
 
 export const OPPORTUNITY_OPTIONS: { value: OpportunityType; label: string }[] = [
   { value: 'job', label: 'Job' },

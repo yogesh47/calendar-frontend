@@ -209,7 +209,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
       setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
       showSuccess(
         draft.eventType === 'my_reminder'
-          ? `Reminder saved. ${rulesFor('my_reminder').info}`
+          ? 'Reminder saved.'
           : `Event published. ${created.notifiedCount} students notified.`,
       )
     } catch (error) {
@@ -226,7 +226,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
       setPendingDraft(null)
       showSuccess(
         draft.eventType === 'my_reminder'
-          ? `Reminder updated. ${rulesFor('my_reminder').info}`
+          ? 'Reminder updated.'
           : notified
             ? `Changes saved. ${notified} students notified.`
             : 'Changes saved.',

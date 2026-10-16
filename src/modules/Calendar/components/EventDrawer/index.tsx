@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Button } from '@/components/ui/Button'
-import { Textarea } from '@/components/ui/Textarea'
 import TiptapEditor from '@/components/custom/TiptapEditor'
 import { DatePicker } from '@/components/custom/DatePicker'
 import TimeSelect, { addDaysTo, dayShift, plusHour } from '../TimeSelect'
@@ -36,6 +35,7 @@ import {
   EVENT_TYPE_OPTIONS,
   MODE_OPTIONS,
   REMIND_BEFORE_OPTIONS,
+  REMINDER_PRIVACY,
   OPPORTUNITY_OPTIONS,
 } from '../../constants/tpo'
 import type { DayEntry } from '../DayPreview'
@@ -277,7 +277,10 @@ const EventDrawer = ({
             </div>
           )}
 
-          {isReminder && <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>Only you can see this. No students are notified.</InfoNote>}
+
+          {isReminder && (
+            <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
+          )}
 
           <Input
             label={
@@ -574,14 +577,12 @@ const EventDrawer = ({
 
           <Section title={isReminder ? 'Note' : 'Details'}>
           {isReminder ? (
-            <Textarea
-              name="note"
-              rows={3}
+            <TiptapEditor
               label="Note (optional)"
-              showCount
-              maxLength={LIMITS.reminderNoteLength}
               value={draft.note}
-              onChange={form.handleChange}
+              maxLength={LIMITS.reminderNoteLength}
+              error={errorFor('note')}
+              onChange={(html) => form.setFieldValue('note', html)}
             />
           ) : (
             <TiptapEditor

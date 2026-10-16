@@ -178,7 +178,14 @@ const DayPreview = ({ date, startTime, endTime, title, entries, onDateChange, on
             ref={grid}
             className={cn('relative', onTimeChange && 'cursor-pointer')}
             onClick={pickSlot}
-            onMouseMove={(event) => onTimeChange && setHover(minutesAt(event.clientY, false))}
+            onMouseMove={(event) => {
+              if (!onTimeChange) return
+              const minutes = minutesAt(event.clientY, false)
+              const start = startTime ? minutesOf(startTime) : null
+              const end = endTime ? minutesOf(endTime) : null
+              const inBlock = start !== null && end !== null && minutes >= start && minutes < end
+              setHover(inBlock ? null : minutes)
+            }}
             onMouseLeave={() => setHover(null)}
           >
             {Array.from({ length: 24 }, (_, hour) => (
@@ -234,10 +241,6 @@ const DayPreview = ({ date, startTime, endTime, title, entries, onDateChange, on
                 className="absolute left-1 right-1 z-20 rounded px-1.5 py-0.5 text-xs font-semibold [background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]"
                 style={block(startTime, endTime)}
                 onClick={(event) => event.stopPropagation()}
-                onMouseMove={(event) => {
-                  event.stopPropagation()
-                  setHover(null)
-                }}
               >
                 <span className="block truncate">
                   {labelOf(minutesOf(startTime))}
