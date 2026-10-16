@@ -167,5 +167,6 @@ export const EMPTY_FILTERS: CalendarFilters = {
   departments: [],
   kinds: [],
   companies: [],
+  opportunityTypes: [],
   createdByMe: false,
 }

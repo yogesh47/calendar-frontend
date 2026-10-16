@@ -25,7 +25,13 @@ import {
 import { isRecentlyUpdated } from '../../helpers'
 import { audienceLine, itemFromEvent, labelFor, rulesFor } from '../../helpers/tpo'
 import { hasText, safeHtml } from '../../helpers/richText'
-import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '../../constants'
+import {
+  ASSESSMENT_EMAIL_NOTE,
+  CALENDAR_ITEM_STYLE,
+  CANCELLED_STYLE,
+  LINKED_EVENT_CANCELLED,
+  LINKED_EVENT_MOVED,
+} from '../../constants'
 import { CANCEL_REASON_LABEL, SIGNED_IN_TPO } from '../../constants/tpo'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -36,6 +42,8 @@ interface EventDetailPanelProps {
   onOpenJob: () => void
   onOpenLinked?: () => void
   onOpenJobForDeadline?: () => void
+  linkedEvent?: TpoEvent | null
+  onUpdateReminderDate?: () => void
   onClose: () => void
   onEdit: () => void
   onCancel: () => void
@@ -66,6 +74,8 @@ const EventDetailPanel = ({
   onOpenJob,
   onOpenLinked,
   onOpenJobForDeadline,
+  linkedEvent,
+  onUpdateReminderDate,
   onClose,
   onEdit,
   onCancel,
@@ -82,7 +92,11 @@ const EventDetailPanel = ({
   const isCancelled = Boolean(event.cancelledAt)
   const day = draft.eventDate ? new Date(`${draft.eventDate}T00:00:00`) : null
   const lastDay = draft.endDate && draft.endDate !== draft.eventDate ? new Date(`${draft.endDate}T00:00:00`) : null
-  const isPast = Boolean(day && day.getTime() < new Date().setHours(0, 0, 0, 0))
+  const endsAt = draft.endDate || draft.eventDate
+  const lastMoment = endsAt
+    ? new Date(`${endsAt}T${draft.endTime || draft.startTime || '23:59'}:00`)
+    : null
+  const hasEnded = Boolean(lastMoment && lastMoment.getTime() < Date.now())
 
   const clock = (value: string): string => (value ? format(new Date(`2000-01-01T${value}:00`), 'h:mm a') : '')
 
@@ -122,6 +136,11 @@ const EventDetailPanel = ({
       : format(day, 'EEE, MMM d, yyyy')
     : undefined
 
+  const linkedMoved =
+    isReminder && linkedEvent && !linkedEvent.cancelledAt && linkedEvent.draft.eventDate !== draft.eventDate
+
+  const isAutoDeadline = draft.eventType === 'deadline' && draft.linkedType === 'job_deadline'
+
   const subtitle = isNudge
     ? CALENDAR_ITEM_STYLE.nudge.label
     : [labelFor(draft.eventType), draft.company].filter(Boolean).join(' · ')
@@ -157,12 +176,12 @@ const EventDetailPanel = ({
       )}
       {onOpenJobForDeadline && <Button onClick={onOpenJobForDeadline}>View &amp; Apply</Button>}
     </>
-  ) : isMine ? (
+  ) : isMine && !hasEnded ? (
     <>
       <Button variant="outline" onClick={onCancel}>
         Cancel Event
       </Button>
-      {!isPast && <Button onClick={onEdit}>Edit Event</Button>}
+      <Button onClick={onEdit}>Edit Event</Button>
     </>
   ) : null
 
@@ -198,6 +217,15 @@ const EventDetailPanel = ({
                 </span>
               )}
 
+              {isAutoDeadline && (
+                <span
+                  className="rounded-full px-[0.5rem] py-[0.0625rem] text-[0.6875rem] font-semibold"
+                  style={{ backgroundColor: chip.surface, color: chip.accent }}
+                >
+                  Auto from job
+                </span>
+              )}
+
               {wasUpdated && (
                 <span
                   className="rounded-full px-[0.5rem] py-[0.0625rem] text-[0.6875rem] font-semibold"
@@ -220,6 +248,8 @@ const EventDetailPanel = ({
             {wasUpdated && (
               <p className="mb-3.5 text-sm [color:var(--ds-color-text-secondary)]">
                 Updated on {format(new Date(event.updatedAt as string), 'd MMM, h:mm a')}
+                {event.changeSummary ? `: ${event.changeSummary}` : ''}
+                {event.changeReason ? ` — ${event.changeReason}` : ''}
               </p>
             )}
 
@@ -251,9 +281,46 @@ const EventDetailPanel = ({
                 </span>
               )}
             </Row>
-            {!isNudge && rules.needsAudience && <Row icon={Users} label="Audience">{audienceLine(draft)}</Row>}
-            {!isNudge && rules.needsAudience && (
+            {isAutoDeadline && event.deadlineCounts && (
+              <Row icon={Users} label="Students">
+                {`${event.deadlineCounts.eligible} eligible · ${event.deadlineCounts.applied} applied · ${event.deadlineCounts.not_applied} not applied`}
+              </Row>
+            )}
+
+            {!isNudge && !isAutoDeadline && rules.needsAudience && (
+              <Row icon={Users} label="Audience">{audienceLine(draft)}</Row>
+            )}
+            {!isNudge && !isAutoDeadline && rules.needsAudience && (
               <Row icon={BellRing} label="Notified">{`${event.notifiedCount} students`}</Row>
+            )}
+
+            {isReminder && linkedEvent?.cancelledAt && (
+              <p className="rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-bg-subtle)] [color:var(--ds-color-text-secondary)]">
+                {LINKED_EVENT_CANCELLED}
+              </p>
+            )}
+
+            {linkedMoved && (
+              <p className="flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [color:var(--ds-color-warning-text)]">
+                {LINKED_EVENT_MOVED(format(new Date(`${linkedEvent.draft.eventDate}T00:00:00`), 'EEE, MMM d, yyyy'))}
+                {onUpdateReminderDate && (
+                  <Button variant="link" className="h-auto p-0 text-sm font-semibold" onClick={onUpdateReminderDate}>
+                    Update reminder
+                  </Button>
+                )}
+              </p>
+            )}
+
+            {isReminder && draft.linkedType && linkedEvent && (
+              <Row icon={Link2} label="Linked item">
+                {linkedEvent.draft.title}
+              </Row>
+            )}
+
+            {draft.eventType === 'online_assessment' && !isMine && (
+              <p className="rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-info-subtle)] [color:var(--ds-color-info)]">
+                {ASSESSMENT_EMAIL_NOTE}
+              </p>
             )}
 
             {isReminder && draft.note && hasText(draft.note) && (

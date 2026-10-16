@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/modules/Auth/constants'
-import { readSession } from '@/modules/Auth/services'
+import { readSession, signOutOnExpiry } from '@/modules/Auth/services'
+import { ApiError, OFFLINE_MESSAGE } from '@/lib/apiError'
 import { EMPTY_DRAFT } from '../constants/tpo'
 import type { EventDraft, TpoEvent } from '../types/tpo'
 
@@ -48,6 +49,9 @@ type ApiEvent = {
   is_owner: boolean
   applies_to_me: boolean
   removed_reason: string | null
+  change_summary: string | null
+  change_reason: string | null
+  deadline_counts: { eligible: number; applied: number; not_applied: number } | null
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -57,14 +61,23 @@ const authHeaders = (): Record<string, string> => {
 }
 
 const ask = async <T,>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers ?? {}) },
-  })
+  let response: Response
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers ?? {}) },
+    })
+  } catch {
+    throw new ApiError(0, { detail: OFFLINE_MESSAGE, code: 'offline' })
+  }
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new Error(typeof body?.detail === 'string' ? body.detail : 'Something went wrong. Please try again.')
+    const body = await response.json().catch(() => ({}))
+    const error = new ApiError(response.status, body)
+    if (error.isAuth) signOutOnExpiry()
+
+    throw error
   }
 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
@@ -82,6 +95,9 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
   cancelNote: entry.cancel_note ?? undefined,
   appliesToMe: entry.applies_to_me,
   removedReason: entry.removed_reason ?? undefined,
+  changeSummary: entry.change_summary ?? undefined,
+  changeReason: entry.change_reason ?? undefined,
+  deadlineCounts: entry.deadline_counts ?? undefined,
   draft: {
     ...EMPTY_DRAFT,
     eventType: entry.event_type as EventDraft['eventType'],
@@ -143,6 +159,9 @@ const toPayload = (draft: EventDraft) => ({
   remind_before: draft.remindBefore,
   linked_type: draft.linkedType,
   linked_id: draft.linkedId,
+  change_summary: draft.changeSummary || null,
+  change_reason: draft.changeReason || null,
+  notify_on_change: draft.notifyOnChange ?? true,
   linked_job: draft.linkedJob
     ? {
         kind: draft.linkedJob.kind,
@@ -154,6 +173,15 @@ const toPayload = (draft: EventDraft) => ({
 })
 
 export const fetchEvents = async (): Promise<TpoEvent[]> => (await ask<ApiEvent[]>('/calendar/events')).map(toEvent)
+
+export const applyToJob = (jobId: string): Promise<{ application_id: string }> =>
+  ask<{ application_id: string }>(`/calendar/jobs/${jobId}/apply`, { method: 'POST' })
+
+export const fetchComingUp = async (limit = 3): Promise<TpoEvent[]> =>
+  (await ask<ApiEvent[]>(`/calendar/coming-up?limit=${limit}`)).map(toEvent)
+
+export const fetchUnreadCount = async (): Promise<number> =>
+  (await ask<{ unread: number }>('/calendar/notifications/unread-count')).unread
 
 export const createEvent = async (draft: EventDraft): Promise<TpoEvent> =>
   toEvent(await ask<ApiEvent>('/calendar/events', { method: 'POST', body: JSON.stringify(toPayload(draft)) }))

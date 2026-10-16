@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppShell from '@/modules/Shell/components/AppShell'
 import AppToaster from '@/components/custom/AppToaster'
+import ErrorBoundary from '@/modules/Shared/components/ErrorBoundary'
 import LoginPage from '@/modules/Auth/pages/LoginPage'
 import JobListPage from '@/modules/Jobs/pages/JobListPage'
 import RequireAuth from '@/modules/Auth/components/RequireAuth'
@@ -22,7 +23,7 @@ const App = () => {
     <RequireAuth session={session} isChecking={isChecking} role={role}>
       {session && (
         <AppShell role={role} user={session.user} onSignOut={signOut}>
-          {page}
+          <ErrorBoundary>{page}</ErrorBoundary>
         </AppShell>
       )}
     </RequireAuth>

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import TiptapEditor from '@/components/custom/TiptapEditor'
 import { DatePicker } from '@/components/custom/DatePicker'
 import TimeSelect, { addDaysTo, dayShift, plusHour } from '../TimeSelect'
+import { Checkbox } from '@/components/ui/Checkbox'
 import { Combobox, MultiSelect } from '@/components/ui/MultiSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup'
 import {
@@ -43,6 +44,8 @@ import type { EventDraft, EventMode, LinkedJob, OpportunityType, TpoEventType } 
 
 interface EventDrawerProps {
   open: boolean
+  notifyMinor?: boolean
+  onNotifyMinorChange?: (value: boolean) => void
   initial: EventDraft
   isEdit: boolean
   reminderOnly?: boolean
@@ -80,6 +83,8 @@ const clock = (value: string): string =>
 
 const EventDrawer = ({
   open,
+  notifyMinor = false,
+  onNotifyMinorChange,
   initial,
   isEdit,
   reminderOnly,
@@ -126,6 +131,7 @@ const EventDrawer = ({
   useEffect(() => {
     if (!open) setLinking(false)
   }, [open])
+
 
   const showErrors = form.submitCount > 0
 
@@ -230,6 +236,7 @@ const EventDrawer = ({
         )}
         onInteractOutside={(event) => event.preventDefault()}
       >
+        <form onSubmit={form.handleSubmit} noValidate className="contents">
         <DialogHeader className="px-4 pb-3 pt-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -681,9 +688,16 @@ const EventDrawer = ({
         </div>
 
         <DialogFooter className="flex-row items-center justify-between px-4 py-3">
+          {isEdit && !isReminder && onNotifyMinorChange ? (
+            <label className="flex cursor-pointer items-center gap-2 text-sm [color:var(--ds-color-text-secondary)]">
+              <Checkbox checked={notifyMinor} onCheckedChange={(value: boolean | 'indeterminate') => onNotifyMinorChange(value === true)} />
+              Notify students about this change
+            </label>
+          ) : (
           <span className="text-sm [color:var(--ds-color-text-secondary)]">
             {rules.needsAudience && count > 0 ? `${count} students will be notified` : ''}
           </span>
+          )}
 
           <span className="flex gap-2">
             {isEdit && canCancelEvent && !isReminder && (
@@ -701,11 +715,10 @@ const EventDrawer = ({
             <Button type="button" variant="outline" onClick={close}>
               {isEdit ? 'Close' : 'Cancel'}
             </Button>
-            <Button type="button" onClick={() => form.handleSubmit()}>
-              {saveLabel}
-            </Button>
+            <Button type="submit">{saveLabel}</Button>
           </span>
         </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
     </>

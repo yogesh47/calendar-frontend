@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
+import { messageOf, showError } from '@/lib/toast'
 import { HOME_BY_ROLE, LOGIN_COPY } from '../../constants'
 import { login } from '../../services'
 import type { Session } from '../../types'
@@ -13,19 +14,17 @@ interface LoginPageProps {
 const LoginPage = ({ session, onSignedIn }: LoginPageProps) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (session) return <Navigate to={HOME_BY_ROLE[session.user.role]} replace />
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError('')
     setIsSubmitting(true)
     try {
       onSignedIn(await login(email, password))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : LOGIN_COPY.genericError)
+    } catch (error) {
+      showError(messageOf(error))
       setIsSubmitting(false)
     }
   }
@@ -64,12 +63,6 @@ const LoginPage = ({ session, onSignedIn }: LoginPageProps) => {
               className="h-10 rounded-md border border-[color:var(--ds-color-border-default)] bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand/30"
             />
           </label>
-
-          {error && (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
 
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? LOGIN_COPY.submitting : LOGIN_COPY.submit}

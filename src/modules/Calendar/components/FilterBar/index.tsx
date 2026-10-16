@@ -13,6 +13,7 @@ import {
   DEPARTMENT_OPTIONS,
   EMPTY_FILTERS,
   EVENT_TYPE_OPTIONS,
+  OPPORTUNITY_OPTIONS,
 } from '../../constants/tpo'
 import type { CalendarFilters } from '../../types/tpo'
 
@@ -28,6 +29,7 @@ export const activeFilterCount = (filters: CalendarFilters): number =>
   filters.departments.length +
   filters.kinds.length +
   filters.companies.length +
+  filters.opportunityTypes.length +
   (filters.createdByMe ? 1 : 0)
 
 const FilterBar = ({ filters, onChange }: FilterBarProps) => {
@@ -56,6 +58,16 @@ const FilterBar = ({ filters, onChange }: FilterBarProps) => {
             Clear
           </Button>
         </div>
+
+        {field(
+          'Opportunity Type',
+          <MultiSelect
+            placeholder="Any opportunity"
+            options={OPPORTUNITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+            value={filters.opportunityTypes}
+            onChange={(opportunityTypes: string[]) => onChange({ ...filters, opportunityTypes })}
+          />,
+        )}
 
         {field(
           'Type',

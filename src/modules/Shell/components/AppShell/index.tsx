@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Briefcase, CalendarDays, ExternalLink, LayoutDashboard, PanelLeft, SlidersHorizontal } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
@@ -7,6 +7,8 @@ import AccountMenu from '../AccountMenu'
 import RemindersPopup from '../RemindersPopup'
 import NotificationBell from '../NotificationBell'
 import { cn } from '@/lib/utils'
+import { fetchUnreadCount, openCalendarStream } from '@/modules/Calendar/services/api'
+import { onWindowFocus } from '@/modules/Calendar/services/store'
 import type { ReactNode } from 'react'
 import type { AuthUser, Role } from '@/modules/Auth/types'
 
@@ -46,6 +48,23 @@ const readExpanded = (): boolean => {
 const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
   const { pathname } = useLocation()
   const basePath = role === 'super_admin' ? 'super-admin' : role
+  const [unseen, setUnseen] = useState(0)
+
+  const readUnseen = useCallback(async () => {
+    if (role === 'super_admin') return
+    setUnseen(await fetchUnreadCount().catch(() => 0))
+  }, [role])
+
+  useEffect(() => {
+    readUnseen()
+    const closeStream = openCalendarStream(readUnseen)
+    const stopFocus = onWindowFocus(readUnseen)
+
+    return () => {
+      closeStream()
+      stopFocus()
+    }
+  }, [readUnseen])
   const [expanded, setExpanded] = useState(readExpanded)
 
   useEffect(() => {
@@ -89,7 +108,15 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
                       isActive ? 'bg-white/20 [color:var(--ds-color-brand-fg)]' : 'text-white/75 hover:bg-white/10',
                     )}
                   >
-                    <item.icon className={cn('shrink-0', expanded ? 'size-[1.125rem]' : 'size-6')} />
+                    <span className="relative shrink-0">
+                      <item.icon className={cn('shrink-0', expanded ? 'size-[1.125rem]' : 'size-6')} />
+                      {item.to === 'calendar' && unseen > 0 && (
+                        <span
+                          aria-label={`${unseen} unseen calendar updates`}
+                          className="absolute -right-0.5 -top-0.5 size-[0.5rem] rounded-full [background-color:var(--ds-color-danger)]"
+                        />
+                      )}
+                    </span>
                     {expanded && <span className="truncate">{item.label}</span>}
                   </NavLink>
                 </TooltipTrigger>

@@ -25,6 +25,19 @@ export const LIMITS = {
   dailyNudgeLimit: { default: 3, min: 1, max: 10 },
 } as const
 
+export const REMINDER_LIMIT_MESSAGE =
+  "You've reached 50 upcoming reminders. Delete some to add more."
+
+export const LINKED_EVENT_MOVED = (day: string): string => `The linked event has moved to ${day}.`
+
+export const LINKED_EVENT_CANCELLED = 'The linked event was cancelled.'
+
+export const ASSESSMENT_EMAIL_NOTE = 'The test link will be sent to your registered email.'
+
+export const CALENDAR_STATE_COPY = {
+  loadFailed: "Couldn't load the calendar.",
+} as const
+
 /** Wall-clock, read in the org's own timezone — never UTC. */
 export const QUIET_HOURS = { from: '22:00', to: '07:00' } as const
 

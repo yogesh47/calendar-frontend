@@ -1,4 +1,5 @@
-import { API_BASE_URL, SESSION_KEY } from '../constants'
+import { ApiError } from '@/lib/apiError'
+import { API_BASE_URL, LOGIN_ROUTE, SESSION_KEY } from '../constants'
 import type { LoginResponse, Session } from '../types'
 
 export const readSession = (): Session | null => {
@@ -33,10 +34,10 @@ export const login = async (email: string, password: string): Promise<Session> =
     body: JSON.stringify({ email, password }),
   })
 
-  const body = await response.json().catch(() => null)
+  const body = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(body?.detail ?? 'Could not sign in. Please try again.')
+    throw new ApiError(response.status, body)
   }
 
   const payload = body as LoginResponse
@@ -52,4 +53,9 @@ export const fetchMe = async (token: string): Promise<Session['user'] | null> =>
   if (!response.ok) return null
 
   return response.json()
+}
+
+export const signOutOnExpiry = (): void => {
+  clearSession()
+  if (window.location.pathname !== LOGIN_ROUTE) window.location.assign(LOGIN_ROUTE)
 }

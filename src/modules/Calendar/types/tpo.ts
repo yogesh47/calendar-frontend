@@ -50,6 +50,9 @@ export type EventDraft = {
   linkedJob: LinkedJob | null
   linkedType: 'event' | 'job_deadline' | null
   linkedId: string | null
+  changeSummary?: string
+  changeReason?: string
+  notifyOnChange?: boolean
 }
 
 export type TpoEvent = {
@@ -65,6 +68,9 @@ export type TpoEvent = {
   cancelNote?: string
   appliesToMe: boolean
   removedReason?: string
+  changeSummary?: string
+  changeReason?: string
+  deadlineCounts?: { eligible: number; applied: number; not_applied: number }
 }
 
 export type AudienceDiff = {
@@ -83,5 +89,6 @@ export type CalendarFilters = {
   departments: string[]
   kinds: string[]
   companies: string[]
+  opportunityTypes: string[]
   createdByMe: boolean
 }

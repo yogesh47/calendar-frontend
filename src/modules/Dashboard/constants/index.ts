@@ -1,3 +1,20 @@
+export const DASHBOARD_COPY = {
+  subtitle: 'Everything about your placements, in one place',
+  thisMonth: 'Events this month',
+  upcoming: 'Upcoming events',
+  deadlines: 'Application deadlines',
+  myReminders: 'My reminders',
+  studentReminders: 'Your reminders',
+  oneUpdate: '1 new update',
+  manyUpdates: (count: number): string => `${count} new updates`,
+} as const
+
+export const COMING_UP_COPY = {
+  title: 'Coming Up',
+  viewAll: 'View all',
+  empty: 'Nothing coming up. Your TPO will add placement events here.',
+} as const
+
 export const FEED_COPY = {
   title: 'Updates, personalised for you',
   empty: 'Nothing new right now. New events, changes and reminders will show up here.',
@@ -8,12 +25,6 @@ export const FEED_COPY = {
 type FeedCard = { label: string; cta?: string; accent: string; surface: string }
 
 export const FEED_CARDS: Record<string, FeedCard> = {
-  reminder_alert: {
-    label: 'Your Reminder',
-    cta: FEED_COPY.viewOnCalendar,
-    accent: 'var(--ds-color-calendar-reminder)',
-    surface: 'var(--ds-color-calendar-reminder-subtle)',
-  },
   new_event: {
     label: 'New Event',
     cta: FEED_COPY.viewOnCalendar,

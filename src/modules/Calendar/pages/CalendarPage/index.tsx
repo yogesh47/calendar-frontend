@@ -4,7 +4,7 @@ import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, 
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { messageOf, showError, showSuccess } from '@/lib/toast'
+import { messageOf, showError, showInfo, showSuccess } from '@/lib/toast'
 import ListView from '../../components/ListView'
 import DaysGrid from '../../components/DaysGrid'
 import MonthGrid from '../../components/MonthGrid'
@@ -17,6 +17,7 @@ import EventDrawer from '../../components/EventDrawer'
 import CancelDialog from '../../components/CancelDialog'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EventDetailPanel from '../../components/EventDetailPanel'
+import { CalendarError, CalendarNotice, CalendarSkeleton } from '../../components/CalendarState'
 import ReviewChangesDialog from '../../components/ReviewChangesDialog'
 import { countAudience, diffAudience } from '../../services/audience'
 import { newDraftOn } from '../../services/tpoEvents'
@@ -31,7 +32,7 @@ import {
   updateEvent,
 } from '../../services/api'
 import { changedSummary, itemFromEvent, onlyMinorChanged, rulesFor } from '../../helpers/tpo'
-import { LIMITS } from '../../constants'
+import { CALENDAR_STATE_COPY, LIMITS, REMINDER_LIMIT_MESSAGE } from '../../constants'
 import { EMPTY_DRAFT, EMPTY_FILTERS, SIGNED_IN_TPO } from '../../constants/tpo'
 import type { CalendarView } from '../../types'
 import type { CalendarFilters, CancelReason, EventDraft, TpoEvent } from '../../types/tpo'
@@ -62,11 +63,14 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
     editing: null,
   })
   const [pendingDraft, setPendingDraft] = useState<EventDraft | null>(null)
+  const [notifyMinor, setNotifyMinor] = useState(false)
   const [openedId, setOpenedId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<TpoEvent | null>(null)
   const [deleting, setDeleting] = useState<TpoEvent | null>(null)
   const [purging, setPurging] = useState<TpoEvent | null>(null)
   const [wiping, setWiping] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const isTpo = role === 'tpo'
 
@@ -83,9 +87,17 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   const refresh = async () => {
     try {
       setEvents(await fetchEvents())
+      setLoadFailed(false)
     } catch (error) {
+      setLoadFailed(true)
       showError(messageOf(error))
     }
+    setIsLoading(false)
+  }
+
+  const retry = () => {
+    setIsLoading(true)
+    refresh()
   }
 
   const goBack = () => {
@@ -128,7 +140,42 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
     (event) => event.draft.eventType === 'my_reminder' && event.draft.eventDate >= format(new Date(), 'yyyy-MM-dd'),
   ).length
 
+  const atReminderLimit = !isTpo && upcomingReminders >= LIMITS.studentUpcomingReminders
+
   const opened = events.find((event) => event.id === openedId) ?? null
+
+  const linkedOf = (event: TpoEvent | null): TpoEvent | null =>
+    event && event.draft.linkedType === 'event' && event.draft.linkedId
+      ? (events.find((entry) => entry.id === event.draft.linkedId) ?? null)
+      : null
+
+  const moveReminder = async (reminder: TpoEvent) => {
+    const linked = linkedOf(reminder)
+    if (!linked) return
+
+    try {
+      await updateEvent(reminder.id, {
+        ...reminder.draft,
+        eventDate: linked.draft.eventDate,
+        endDate: linked.draft.eventDate,
+        startTime: linked.draft.startTime || reminder.draft.startTime,
+      })
+      await refresh()
+      showSuccess('Reminder moved to the new date.')
+    } catch (error) {
+      showError(messageOf(error))
+    }
+  }
+
+  const hasFilters =
+    filters.kinds.length > 0 ||
+    filters.types.length > 0 ||
+    filters.companies.length > 0 ||
+    filters.courses.length > 0 ||
+    filters.batches.length > 0 ||
+    filters.departments.length > 0 ||
+    filters.opportunityTypes.length > 0 ||
+    filters.createdByMe
 
   const visible = useMemo(() => {
     const fromEvents = events
@@ -136,21 +183,24 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
       .filter((event) => !filters.createdByMe || event.draft.eventType !== 'deadline')
       .filter((event) => isTpo || event.cancelReason !== 'created_by_mistake')
       .filter((event) => event.draft.eventType !== 'my_reminder' || event.createdBy === SIGNED_IN_TPO)
-      .filter((event) => !filters.types.length || filters.types.includes(event.draft.eventType))
-      .filter((event) => !filters.companies.length || filters.companies.includes(event.draft.company))
-      .filter((event) => !filters.createdByMe || event.createdBy === SIGNED_IN_TPO)
       .filter(
         (event) =>
-          !filters.courses.length || event.draft.audience.courses.some((course) => filters.courses.includes(course)),
+          event.draft.eventType === 'my_reminder' ||
+          ((!filters.types.length || filters.types.includes(event.draft.eventType)) &&
+            (!filters.opportunityTypes.length ||
+              filters.opportunityTypes.includes(event.draft.audience.opportunityType))),
       )
       .filter(
         (event) =>
-          !filters.batches.length || event.draft.audience.batches.some((batch) => filters.batches.includes(batch)),
-      )
-      .filter(
-        (event) =>
-          !filters.departments.length ||
-          event.draft.audience.departments.some((department) => filters.departments.includes(department)),
+          event.draft.eventType === 'my_reminder' ||
+          ((!filters.companies.length || filters.companies.includes(event.draft.company)) &&
+            (!filters.createdByMe || event.createdBy === SIGNED_IN_TPO) &&
+            (!filters.courses.length ||
+              event.draft.audience.courses.some((course) => filters.courses.includes(course))) &&
+            (!filters.batches.length ||
+              event.draft.audience.batches.some((batch) => filters.batches.includes(batch))) &&
+            (!filters.departments.length ||
+              event.draft.audience.departments.some((department) => filters.departments.includes(department)))),
       )
       .map(itemFromEvent)
 
@@ -164,6 +214,16 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         : filters.kinds.includes(item.kind),
     )
   }, [events, filters, isTpo])
+
+  const inShownRange = (item: { startsAt: string }): boolean => {
+    const day = format(new Date(item.startsAt), 'yyyy-MM-dd')
+
+    if (view === 'month' || view === 'list') return day.startsWith(format(month, 'yyyy-MM'))
+
+    return shownDays.some((entry) => format(entry, 'yyyy-MM-dd') === day)
+  }
+
+  const shownItems = visible.filter(inShownRange)
 
   const openCreate = (eventDate: string) =>
     setDrawer({
@@ -217,10 +277,15 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
     }
   }
 
-  const applyEdit = async (draft: EventDraft, notified: number) => {
+  const applyEdit = async (draft: EventDraft, notified: number, reason = '') => {
     const editing = drawer.editing as TpoEvent
     try {
-      await updateEvent(editing.id, draft)
+      await updateEvent(editing.id, {
+        ...draft,
+        changeSummary: changedSummary(editing.draft, draft),
+        changeReason: reason,
+        notifyOnChange: notified > 0,
+      })
       await refresh()
       setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })
       setPendingDraft(null)
@@ -232,6 +297,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             : 'Changes saved.',
       )
     } catch (error) {
+      setPendingDraft(null)
       showError(messageOf(error))
     }
   }
@@ -248,7 +314,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
       return
     }
 
-    applyEdit(draft, onlyMinorChanged(drawer.editing.draft, draft) ? 0 : notifiedFor(draft))
+    applyEdit(draft, onlyMinorChanged(drawer.editing.draft, draft) && !notifyMinor ? 0 : notifiedFor(draft))
   }
 
   const confirmCancel = async (reason: CancelReason, note: string) => {
@@ -343,8 +409,11 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                disabled={!isTpo && upcomingReminders >= LIMITS.studentUpcomingReminders}
-                onClick={() => openCreate(format(selectedDay, 'yyyy-MM-dd'))}
+                onClick={() =>
+                  atReminderLimit
+                    ? showInfo(REMINDER_LIMIT_MESSAGE)
+                    : openCreate(format(selectedDay, 'yyyy-MM-dd'))
+                }
               >
                 <Plus className="size-3.5" />
                 {isTpo ? 'New Event' : 'Add Reminder'}
@@ -391,20 +460,36 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               {VIEWS.map((entry) =>
                 entry.id === 'day' ? (
                   <Popover key={entry.id}>
-                    <PopoverTrigger asChild>
+                    <span
+                      className={cn(
+                        'flex items-center rounded-md transition-colors',
+                        view === 'day'
+                          ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
+                          : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
+                      )}
+                    >
                       <button
                         type="button"
-                        className={cn(
-                          'flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 text-sm font-medium transition-colors',
-                          view === 'day'
-                            ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
-                            : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
-                        )}
+                        aria-label="Day view"
+                        onClick={() => {
+                          setDayCount(1)
+                          setView('day')
+                        }}
+                        className="cursor-pointer rounded-l-md py-1 pl-3 pr-1 text-sm font-medium"
                       >
                         {dayCount === 1 ? 'Day' : `${dayCount} days`}
-                        <ChevronDown className="size-3.5" />
                       </button>
-                    </PopoverTrigger>
+
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Choose how many days"
+                          className="cursor-pointer rounded-r-md py-1 pl-0.5 pr-2"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                    </span>
 
                     <PopoverContent align="start" className="w-40 p-1 [background-color:var(--ds-color-bg-surface)]">
                       {[1, 2, 3, 4, 5, 6, 7].map((count) => (
@@ -453,6 +538,19 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             </div>
           </div>
 
+          {isLoading ? (
+            <CalendarSkeleton />
+          ) : loadFailed ? (
+            <CalendarError message={CALENDAR_STATE_COPY.loadFailed} onRetry={retry} />
+          ) : (
+          <>
+          {!shownItems.length && hasFilters && (
+            <CalendarNotice
+              message="No events match these filters."
+              actionLabel="Clear filters"
+              onAction={() => setFilters(EMPTY_FILTERS)}
+            />
+          )}
           {(view === 'day' || view === 'week') && (
             <DaysGrid
               days={shownDays}
@@ -477,6 +575,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             />
           )}
           {view === 'list' && <ListView month={month} items={visible} onOpen={(item) => setOpenedId(item.id)} />}
+          </>
+          )}
         </section>
       </div>
 
@@ -519,6 +619,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
           }))}
         onClose={() => setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null })}
         onSave={save}
+        notifyMinor={notifyMinor}
+        onNotifyMinorChange={setNotifyMinor}
       />
 
       {pendingDraft && drawer.editing && (
@@ -528,12 +630,14 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
           diff={diffAudience(drawer.editing.draft.audience, pendingDraft.audience)}
           notifyCount={notifiedFor(pendingDraft)}
           onBack={() => setPendingDraft(null)}
-          onSave={() => applyEdit(pendingDraft, notifiedFor(pendingDraft))}
+          onSave={(reason: string) => applyEdit(pendingDraft, notifiedFor(pendingDraft), reason)}
         />
       )}
 
       <EventDetailPanel
         event={opened}
+        linkedEvent={linkedOf(opened)}
+        onUpdateReminderDate={opened && linkedOf(opened) ? () => moveReminder(opened) : undefined}
         onOpenJob={() => {
           setOpenedId(null)
           navigate(`/${role}/jobs`)
