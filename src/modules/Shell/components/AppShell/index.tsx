@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Briefcase, CalendarDays, ExternalLink, LayoutDashboard, PanelLeft, SlidersHorizontal } from 'lucide-react'
+import { Briefcase, CalendarDays, ExternalLink, LayoutDashboard, Menu, PanelLeft, SlidersHorizontal } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { TooltipProvider } from '@/components/ui/TooltipProvider'
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/Drawer'
 import AccountMenu from '../AccountMenu'
 import RemindersPopup from '../RemindersPopup'
 import NotificationBell from '../NotificationBell'
@@ -49,6 +50,7 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
   const { pathname } = useLocation()
   const basePath = role === 'super_admin' ? 'super-admin' : role
   const [unseen, setUnseen] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const readUnseen = useCallback(async () => {
     if (role === 'super_admin') return
@@ -75,13 +77,17 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
     }
   }, [expanded])
 
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
   return (
     <TooltipProvider delayDuration={120}>
       {role !== 'super_admin' && <RemindersPopup role={role} />}
       <div className="flex min-h-screen [background-color:var(--ds-color-bg-app)]">
         <aside
           className={cn(
-            'sticky top-0 flex h-screen shrink-0 flex-col gap-1 px-2 py-4 transition-[width] duration-200',
+            'sticky top-0 hidden h-screen shrink-0 flex-col gap-1 px-2 py-4 transition-[width] duration-200 md:flex',
             '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]',
             expanded ? 'w-60' : 'w-[4.5rem]',
           )}
@@ -147,14 +153,80 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-end gap-3 border-b px-5 [background-color:var(--ds-color-bg-surface)]">
-            {role !== 'super_admin' && <NotificationBell />}
-            <AccountMenu user={user} onSignOut={onSignOut} />
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b px-3 [background-color:var(--ds-color-bg-surface)] sm:px-5 md:justify-end">
+            <span className="flex items-center gap-2 md:hidden">
+              <button
+                type="button"
+                aria-label="Open menu"
+                onClick={() => setMenuOpen(true)}
+                className="relative grid size-10 cursor-pointer place-items-center rounded-lg transition-colors hover:[background-color:var(--ds-color-bg-muted)]"
+              >
+                <Menu className="size-5" />
+                {unseen > 0 && role !== 'super_admin' && (
+                  <span
+                    aria-label={`${unseen} unseen calendar updates`}
+                    className="absolute right-1.5 top-1.5 size-[0.5rem] rounded-full [background-color:var(--ds-color-danger)]"
+                  />
+                )}
+              </button>
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg text-sm font-extrabold [background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]">
+                7
+              </span>
+            </span>
+
+            <span className="flex items-center gap-3">
+              {role !== 'super_admin' && <NotificationBell />}
+              <AccountMenu user={user} onSignOut={onSignOut} />
+            </span>
           </header>
 
           <main className="min-w-0 flex-1">{children}</main>
         </div>
       </div>
+
+      <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
+        <DrawerContent
+          side="left"
+          className="w-[80%] max-w-[17rem] gap-1 p-3 [background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)] md:hidden [&>button]:hidden"
+        >
+          <DrawerTitle className="sr-only">Menu</DrawerTitle>
+
+          <div className="mb-3 flex items-center gap-2 px-2">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg text-lg font-extrabold [background-color:var(--ds-color-brand-fg)] [color:var(--ds-color-brand)]">
+              7
+            </span>
+            <span className="flex-1 truncate text-base font-bold">7Seers</span>
+          </div>
+
+          {NAV_BY_ROLE[role].map((item) => {
+            const path = `/${basePath}/${item.to}`
+            const isActive = pathname === path
+
+            return (
+              <NavLink
+                key={item.to}
+                to={path}
+                onClick={() => setMenuOpen(false)}
+                className={cn(
+                  'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors',
+                  isActive ? 'bg-white/20 [color:var(--ds-color-brand-fg)]' : 'text-white/75 hover:bg-white/10',
+                )}
+              >
+                <span className="relative shrink-0">
+                  <item.icon className="size-[1.125rem] shrink-0" />
+                  {item.to === 'calendar' && unseen > 0 && (
+                    <span
+                      aria-label={`${unseen} unseen calendar updates`}
+                      className="absolute -right-0.5 -top-0.5 size-[0.5rem] rounded-full [background-color:var(--ds-color-danger)]"
+                    />
+                  )}
+                </span>
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            )
+          })}
+        </DrawerContent>
+      </Drawer>
     </TooltipProvider>
   )
 }

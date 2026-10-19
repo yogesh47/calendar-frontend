@@ -25,7 +25,7 @@ const StatusBadge = ({ item, className }: { item: CalendarItem; className?: stri
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-[0.5rem] py-[0.125rem] text-[0.6875rem] font-semibold',
+        'inline-flex items-center rounded-full px-[0.375rem] py-[0.125rem] text-[0.625rem] font-semibold sm:px-[0.5rem] sm:text-[0.6875rem]',
         key === 'cancelled' && 'bg-destructive/10 text-destructive',
         key === 'updated' && 'bg-brand/10 text-brand',
         (key === 'past' || key === 'not_applicable') && 'bg-muted text-muted-foreground',

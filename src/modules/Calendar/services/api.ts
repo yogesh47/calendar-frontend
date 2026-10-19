@@ -181,7 +181,7 @@ export const applyToJob = (jobId: string): Promise<{ application_id: string }> =
 export const fetchComingUp = async (limit = 3): Promise<TpoEvent[]> =>
   (await ask<ApiEvent[]>(`/calendar/coming-up?limit=${limit}`)).map(toEvent)
 
-// Web par alag call ki zaroorat nahi — wahi list jo bell use karti hai, usi se ginti.
+// No separate call on the web — the count comes from the same list the bell uses.
 export const fetchUnreadCount = async (): Promise<number> =>
   (await fetchNotifications()).filter((entry) => !entry.is_read).length
 
@@ -216,8 +216,8 @@ export const readNotification = (notificationId: string): Promise<void> =>
 export const readAllNotifications = (): Promise<void> =>
   ask<void>('/calendar/notifications/read-all', { method: 'POST' })
 
-// Poore app ke liye ek hi SSE connection. Har component apna EventSource kholta
-// tha, to ek page par chaar stream aur chaar baar wahi fetch chal jaati thi.
+// One SSE connection for the whole app. Each component used to open its own
+// EventSource, so a single page ran four streams and four copies of each fetch.
 let stream: EventSource | null = null
 
 const listeners = new Set<() => void>()
@@ -244,7 +244,7 @@ export const openCalendarStream = (onChange: () => void): (() => void) => {
   }
 }
 
-// Ek hi waqt par chali hui request dobara nahi jaati — sab wahi jawab use karte hain.
+// A request already in flight is not sent again — every caller shares that answer.
 const share = <T,>(key: string, call: () => Promise<T>): Promise<T> => {
   const running = inFlight.get(key) as Promise<T> | undefined
   if (running) return running

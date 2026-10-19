@@ -25,7 +25,7 @@ const ItemTile = ({ item, onOpen, showTime, className }: ItemTileProps) => {
         onOpen?.(item)
       }}
       className={cn(
-        'flex w-full cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs',
+        'flex w-full min-w-0 max-w-full cursor-pointer items-center gap-1 overflow-hidden rounded px-1 py-1 text-left text-[0.6875rem] sm:gap-1.5 sm:px-1.5 sm:text-xs',
         'border-l-[3px] transition-colors hover:brightness-95',
         style.dashed && 'border-l-0 border border-dashed',
         isOver && 'opacity-60',
@@ -33,13 +33,17 @@ const ItemTile = ({ item, onOpen, showTime, className }: ItemTileProps) => {
       )}
       style={{ backgroundColor: style.surface, borderColor: style.accent }}
     >
-      {time && <span className="shrink-0 font-semibold" style={{ color: style.accent }}>{time}</span>}
+      {time && (
+        <span className="shrink-0 truncate font-semibold" style={{ color: style.accent }}>
+          {time}
+        </span>
+      )}
       {!time && (
-        <span className="shrink-0 text-[0.625rem] font-bold uppercase" style={{ color: style.accent }}>
+        <span className="shrink-0 truncate text-[0.625rem] font-bold uppercase" style={{ color: style.accent }}>
           {style.label}
         </span>
       )}
-      <span className={cn('truncate', style.struck && 'line-through [color:var(--ds-color-text-tertiary)]')}>
+      <span className={cn('min-w-0 flex-1 truncate', style.struck && 'line-through [color:var(--ds-color-text-tertiary)]')}>
         {style.struck ? `${style.label}: ${item.title}` : item.title}
       </span>
 

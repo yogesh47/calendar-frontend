@@ -4,12 +4,14 @@ import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, 
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/modules/Shared/hooks/useIsMobile'
 import { messageOf, showError, showInfo, showSuccess } from '@/lib/toast'
 import ListView from '../../components/ListView'
 import DaysGrid from '../../components/DaysGrid'
 import MonthGrid from '../../components/MonthGrid'
 import DayJump from '../../components/DayJump'
 import MiniCalendar from '../../components/MiniCalendar'
+import WeekStrip from '../../components/WeekStrip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import Legend from '../../components/Legend'
 import FilterBar from '../../components/FilterBar'
@@ -51,6 +53,7 @@ interface CalendarPageProps {
 
 const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarPageProps) => {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [month, setMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(new Date())
   const [dayCount, setDayCount] = useState(1)
@@ -127,8 +130,15 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
       ? Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(month, { weekStartsOn: 1 }), index))
       : Array.from({ length: dayCount }, (_, index) => addDays(selectedDay, index))
 
-  const rangeLabel =
-    view === 'day'
+  const rangeLabel = isMobile
+    ? view === 'day'
+      ? dayCount === 1
+        ? format(selectedDay, 'd MMM')
+        : `${format(selectedDay, 'd')}–${format(addDays(selectedDay, dayCount - 1), 'd MMM')}`
+      : view === 'week'
+        ? `${format(startOfWeek(month, { weekStartsOn: 1 }), 'd')}–${format(endOfWeek(month, { weekStartsOn: 1 }), 'd MMM')}`
+        : format(month, 'MMM yyyy')
+    : view === 'day'
       ? dayCount === 1
         ? format(selectedDay, 'EEE, MMM d, yyyy')
         : `${format(selectedDay, 'EEE, MMM d')} – ${format(addDays(selectedDay, dayCount - 1), 'EEE, MMM d, yyyy')}`
@@ -369,18 +379,19 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   }
 
   return (
-    <div className="flex w-full flex-col gap-[1rem] p-[1.5rem]">
+    <div className="flex w-full flex-col gap-[1rem] p-3 sm:p-[1.5rem]">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <CalendarDays className="size-5 [color:var(--ds-color-brand)]" />
-          <h1 className="text-xl font-semibold">{title}</h1>
+          <h1 className="text-lg font-semibold sm:text-xl">{title}</h1>
         </div>
 
       </header>
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[16rem]">
+        <aside className="order-2 flex w-full shrink-0 flex-col gap-3 lg:order-none lg:w-[16rem]">
           <MiniCalendar
+            className="hidden lg:block"
             month={month}
             selected={selectedDay}
             rangeStart={view === 'week' ? startOfWeek(month, { weekStartsOn: 1 }) : selectedDay}
@@ -404,11 +415,12 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
           />
         </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 [background-color:var(--ds-color-bg-surface)]">
-            <div className="flex items-center gap-2">
+        <section className="order-1 flex min-w-0 flex-1 flex-col gap-3 lg:order-none">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-2 py-2 [background-color:var(--ds-color-bg-surface)] sm:gap-3 sm:px-3">
+            <div className="flex min-w-0 shrink items-center gap-0.5 sm:gap-2">
               <Button
                 size="sm"
+                className="hidden sm:inline-flex"
                 onClick={() =>
                   atReminderLimit
                     ? showInfo(REMINDER_LIMIT_MESSAGE)
@@ -439,7 +451,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               <DayJump
                 date={format(selectedDay, 'yyyy-MM-dd')}
                 label={rangeLabel}
-                className="text-base"
+                className="min-w-0 whitespace-nowrap text-sm sm:text-base"
                 onDateChange={(value) => {
                   const picked = new Date(`${value}T00:00:00`)
                   setSelectedDay(picked)
@@ -448,21 +460,23 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+            <span className="ml-auto flex items-center gap-1.5 sm:ml-0 sm:contents">
             {isTpo && (
-              <Button variant="outline" size="sm" onClick={() => setWiping(true)}>
+              <Button variant="outline" size="sm" aria-label="Delete all" onClick={() => setWiping(true)}>
                 <Trash2 className="size-4" />
-                Delete all
+                <span className="hidden sm:inline">Delete all</span>
               </Button>
             )}
             {isTpo && <FilterBar filters={filters} onChange={setFilters} />}
-            <div className="flex items-center gap-1 rounded-lg border p-1">
+            </span>
+            <div className="flex w-full items-center gap-1 rounded-lg border p-1 sm:w-auto">
               {VIEWS.map((entry) =>
                 entry.id === 'day' ? (
                   <Popover key={entry.id}>
                     <span
                       className={cn(
-                        'flex items-center rounded-md transition-colors',
+                        'flex flex-1 items-center justify-center rounded-md transition-colors sm:flex-none sm:justify-start',
                         view === 'day'
                           ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
                           : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
@@ -475,16 +489,16 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
                           setDayCount(1)
                           setView('day')
                         }}
-                        className="cursor-pointer rounded-l-md py-1 pl-3 pr-1 text-sm font-medium"
+                        className="cursor-pointer whitespace-nowrap rounded-l-md py-1.5 pl-2.5 pr-1 text-[0.8125rem] font-medium sm:py-1 sm:pl-3 sm:text-sm"
                       >
-                        {dayCount === 1 ? 'Day' : `${dayCount} days`}
+                        {dayCount === 1 ? 'Day' : isMobile ? `${dayCount}d` : `${dayCount} days`}
                       </button>
 
                       <PopoverTrigger asChild>
                         <button
                           type="button"
                           aria-label="Choose how many days"
-                          className="cursor-pointer rounded-r-md py-1 pl-0.5 pr-2"
+                          className="cursor-pointer self-stretch rounded-r-md py-1.5 pl-0.5 pr-2 sm:py-1"
                         >
                           <ChevronDown className="size-3.5" />
                         </button>
@@ -524,7 +538,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
                     type="button"
                     onClick={() => setView(entry.id)}
                     className={cn(
-                      'cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors',
+                      'flex-1 cursor-pointer whitespace-nowrap rounded-md px-2 py-1.5 text-[0.8125rem] font-medium transition-colors sm:flex-none sm:px-3 sm:py-1 sm:text-sm',
                       view === entry.id
                         ? '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]'
                         : '[color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
@@ -549,6 +563,15 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
               message="No events match these filters."
               actionLabel="Clear filters"
               onAction={() => setFilters(EMPTY_FILTERS)}
+            />
+          )}
+          {isMobile && view === 'day' && (
+            <WeekStrip
+              selected={selectedDay}
+              onPick={(day) => {
+                setSelectedDay(day)
+                setMonth(day)
+              }}
             />
           )}
           {(view === 'day' || view === 'week') && (
@@ -579,6 +602,17 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
           )}
         </section>
       </div>
+
+      <button
+        type="button"
+        aria-label={isTpo ? 'New Event' : 'Add Reminder'}
+        onClick={() =>
+          atReminderLimit ? showInfo(REMINDER_LIMIT_MESSAGE) : openCreate(format(selectedDay, 'yyyy-MM-dd'))
+        }
+        className="fixed bottom-4 right-4 z-40 grid size-11 cursor-pointer place-items-center rounded-full [background-color:var(--ds-color-brand)] [box-shadow:0_6px_18px_rgba(15,23,42,0.24)] [color:var(--ds-color-brand-fg)] sm:hidden"
+      >
+        <Plus className="size-5" />
+      </button>
 
       <EventDrawer
         open={drawer.open}

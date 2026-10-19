@@ -237,7 +237,7 @@ const EventDrawer = ({
         onInteractOutside={(event) => event.preventDefault()}
       >
         <form onSubmit={form.handleSubmit} noValidate className="contents">
-        <DialogHeader className="px-4 pb-3 pt-4">
+        <DialogHeader className="px-3 pb-3 pt-4 sm:px-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-lg [background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]">
@@ -252,7 +252,7 @@ const EventDrawer = ({
             </div>
 
             {!isEdit && !reminderOnly && (
-              <Button type="button" variant="outline" size="sm" className="mr-16" onClick={fillDummy}>
+              <Button type="button" variant="outline" size="sm" className="mr-9 sm:mr-16" onClick={fillDummy}>
                 <Wand2 className="size-3.5" />
                 Fill Data
               </Button>
@@ -262,7 +262,7 @@ const EventDrawer = ({
 
         <div
           className={cn(
-            'grid max-h-[70vh] gap-3 overflow-hidden px-4 pb-4 pt-3 [background-color:var(--ds-color-bg-app)]',
+            'grid max-h-[70vh] gap-3 overflow-hidden px-3 pb-4 pt-3 [background-color:var(--ds-color-bg-app)] sm:px-4',
             showPreview && 'lg:grid-cols-[1fr_24rem]',
           )}
         >
@@ -434,7 +434,7 @@ const EventDrawer = ({
                   Mode <Required />
                 </Label>
                 <RadioGroup
-                  className="flex flex-row gap-6"
+                  className="flex flex-row flex-wrap gap-4 sm:gap-6"
                   value={draft.mode}
                   onValueChange={(value) => set('mode', value as EventMode)}
                 >
@@ -494,7 +494,7 @@ const EventDrawer = ({
                   Opportunity Type <Required />
                 </Label>
                 <RadioGroup
-                  className="flex flex-row gap-5"
+                  className="flex flex-row flex-wrap gap-4 sm:gap-5"
                   value={draft.audience.opportunityType}
                   onValueChange={(value) => pickOpportunity(value as OpportunityType)}
                 >
@@ -687,7 +687,7 @@ const EventDrawer = ({
           )}
         </div>
 
-        <DialogFooter className="flex-row items-center justify-between px-4 py-3">
+        <DialogFooter className="flex-col-reverse items-stretch gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
           {isEdit && !isReminder && onNotifyMinorChange ? (
             <label className="flex cursor-pointer items-center gap-2 text-sm [color:var(--ds-color-text-secondary)]">
               <Checkbox checked={notifyMinor} onCheckedChange={(value: boolean | 'indeterminate') => onNotifyMinorChange(value === true)} />
@@ -699,7 +699,7 @@ const EventDrawer = ({
           </span>
           )}
 
-          <span className="flex gap-2">
+          <span className="flex flex-wrap justify-end gap-2">
             {isEdit && canCancelEvent && !isReminder && (
               <Button type="button" variant="outline" onClick={onCancelEvent}>
                 Cancel Event

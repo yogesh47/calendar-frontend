@@ -60,7 +60,7 @@ const Row = ({ icon: Icon, label, children }: { icon: LucideIcon; label: string;
 
   return (
     <div className="flex gap-3 text-sm">
-      <span className="flex w-[6.75rem] shrink-0 items-center gap-2 self-start text-[0.8125rem] font-semibold leading-[1.25rem] [color:var(--ds-color-text-secondary)]">
+      <span className="flex w-[5.25rem] shrink-0 items-center gap-2 self-start text-[0.75rem] font-semibold leading-[1.25rem] [color:var(--ds-color-text-secondary)] sm:w-[6.75rem] sm:text-[0.8125rem]">
         <Icon className="size-4 shrink-0" />
         {label}
       </span>

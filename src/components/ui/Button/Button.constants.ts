@@ -26,10 +26,10 @@ export const buttonVariants = cva(
           '[background-color:var(--ds-color-danger)] [color:var(--ds-color-danger-fg)] enabled:hover:[background-color:var(--ds-color-danger-hover)]',
       },
       size: {
-        sm: 'h-8 px-3 text-sm',
-        md: 'h-10 px-4 text-sm',
-        lg: 'h-12 px-5 text-base',
-        icon: 'h-10 w-10 p-0',
+        sm: 'h-8 px-2.5 text-[0.8125rem] sm:px-3 sm:text-sm',
+        md: 'h-9 px-3 text-[0.8125rem] sm:h-10 sm:px-4 sm:text-sm',
+        lg: 'h-11 px-4 text-sm sm:h-12 sm:px-5 sm:text-base',
+        icon: 'h-9 w-9 p-0 sm:h-10 sm:w-10',
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },
@@ -38,8 +38,8 @@ export const buttonVariants = cva(
 
 export const ICON_ONLY: Record<'sm' | 'md' | 'lg', string> = {
   sm: 'w-8 px-0',
-  md: 'w-10 px-0',
-  lg: 'w-12 px-0',
+  md: 'w-9 px-0 sm:w-10',
+  lg: 'w-11 px-0 sm:w-12',
 };
 
 export const HOVER_EFFECT: Record<ButtonHoverEffect, string> = {

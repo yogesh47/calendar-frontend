@@ -2,12 +2,14 @@ import { differenceInMinutes, format } from 'date-fns'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { cn } from '@/lib/utils'
 import { styleOf } from '../../helpers'
+import type { ReactNode } from 'react'
 import type { CalendarItem } from '../../types'
 
 interface DayAgendaProps {
   day: Date
   items: CalendarItem[]
   hiddenCount: number
+  trigger?: ReactNode
   onOpen?: (item: CalendarItem) => void
 }
 
@@ -21,22 +23,25 @@ const durationOf = (item: CalendarItem): string => {
   return `${Math.floor(minutes / 60)} hr ${minutes % 60} min`
 }
 
-const DayAgenda = ({ day, items, hiddenCount, onOpen }: DayAgendaProps) => (
+const DayAgenda = ({ day, items, hiddenCount, trigger, onOpen }: DayAgendaProps) => (
   <Popover>
     <PopoverTrigger asChild>
       <button
         type="button"
         aria-label={`Show all ${items.length} items`}
         onClick={(event) => event.stopPropagation()}
-        className="cursor-pointer rounded px-1.5 text-left text-xs font-semibold [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
+        className={cn(
+          'cursor-pointer rounded text-left text-xs font-semibold [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]',
+          trigger ? 'flex w-full flex-wrap items-center gap-1 px-1 py-0.5' : 'px-1.5',
+        )}
       >
-        +{hiddenCount} more
+        {trigger ?? `+${hiddenCount} more`}
       </button>
     </PopoverTrigger>
 
     <PopoverContent hideWhenDetached collisionPadding={8}
       align="start"
-      className="w-[20rem] p-0 [background-color:var(--ds-color-bg-surface)]"
+      className="w-[min(20rem,calc(100vw-1.5rem))] p-0 [background-color:var(--ds-color-bg-surface)]"
       onClick={(event) => event.stopPropagation()}
     >
       <p className="border-b px-4 py-3 text-base font-semibold">{format(day, 'EEE, MMM d, yyyy')}</p>

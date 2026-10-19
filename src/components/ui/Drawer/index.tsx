@@ -65,7 +65,7 @@ const DrawerContent = React.forwardRef<
         onInteractOutside?.(event)
       }}
       className={cn(
-        'fixed z-50 flex flex-col gap-4 p-6 [background-color:var(--ds-color-bg-surface)] [border-color:var(--ds-color-border-default)] [box-shadow:var(--ds-shadow-xl)] transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:duration-300 data-[state=closed]:duration-200 focus:outline-none',
+        'fixed z-50 flex flex-col gap-4 p-4 sm:p-6 [background-color:var(--ds-color-bg-surface)] [border-color:var(--ds-color-border-default)] [box-shadow:var(--ds-shadow-xl)] transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:duration-300 data-[state=closed]:duration-200 focus:outline-none',
         SIDE[side],
         className,
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { format, isSameDay, isToday } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/modules/Shared/hooks/useIsMobile'
 import ItemTile from '../ItemTile'
 import { styleOf } from '../../helpers'
 import { lanesFor } from '../../helpers/conflicts'
@@ -23,6 +24,7 @@ const minutesOf = (value: string): number => {
 }
 
 const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
+  const isMobile = useIsMobile()
   const scroller = useRef<HTMLDivElement>(null)
   const [now, setNow] = useState(new Date())
 
@@ -43,34 +45,38 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
   const timedOn = (day: Date) =>
     items.filter((item) => !item.isAllDay && !spansDays(item) && isSameDay(new Date(item.startsAt), day))
 
-  const columns = `4rem repeat(${days.length}, minmax(0, 1fr))`
+  const columns = isMobile
+    ? `3rem repeat(${days.length}, minmax(5.25rem, 1fr))`
+    : `4rem repeat(${days.length}, minmax(0, 1fr))`
 
   return (
     <div className="w-full overflow-hidden rounded-xl border [background-color:var(--ds-color-bg-surface)]">
-      <div ref={scroller} className="max-h-[36rem] overflow-y-auto">
-        <div className="sticky top-0 z-20 [background-color:var(--ds-color-bg-surface)]">
+      <div ref={scroller} className="max-h-[32rem] overflow-auto sm:max-h-[36rem]">
+        <div className="sticky top-0 z-20 w-max min-w-full [background-color:var(--ds-color-bg-surface)]">
       <div className="grid border-b" style={{ gridTemplateColumns: columns }}>
-        <div className="border-r px-2 py-2 text-xs font-semibold [color:var(--ds-color-text-tertiary)]">Time</div>
+        <div className="sticky left-0 z-30 border-r px-1 py-2 text-[0.625rem] font-semibold [background-color:var(--ds-color-bg-surface)] [color:var(--ds-color-text-tertiary)] sm:px-2 sm:text-xs">
+          Time
+        </div>
         {days.map((day) => (
           <button
             key={day.toISOString()}
             type="button"
             onClick={() => onPickDate?.(day)}
             className={cn(
-              'flex cursor-pointer flex-col border-r px-2 py-2 text-left last:border-r-0',
+              'flex cursor-pointer flex-col border-r px-1 py-2 text-left last:border-r-0 sm:px-2',
               onPickDate && 'hover:[background-color:var(--ds-color-bg-muted)]',
             )}
           >
             <span
               className={cn(
-                'text-xl font-bold leading-none',
+                'text-base font-bold leading-none sm:text-xl',
                 isToday(day) ? '[color:var(--ds-color-brand)]' : '[color:var(--ds-color-text-primary)]',
               )}
             >
               {format(day, 'd')}
             </span>
-            <span className="mt-1 text-xs font-semibold [color:var(--ds-color-text-secondary)]">
-              {format(day, 'EEEE')}
+            <span className="mt-1 truncate text-[0.625rem] font-semibold [color:var(--ds-color-text-secondary)] sm:text-xs">
+              {format(day, isMobile ? 'EEE' : 'EEEE')}
             </span>
           </button>
         ))}
@@ -80,11 +86,11 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
         className="grid border-b [background-color:var(--ds-color-bg-subtle)]"
         style={{ gridTemplateColumns: columns }}
       >
-        <div className="border-r px-2 py-2 text-xs font-semibold [color:var(--ds-color-text-tertiary)]">
+        <div className="sticky left-0 z-30 border-r px-1 py-2 text-[0.625rem] font-semibold [background-color:var(--ds-color-bg-subtle)] [color:var(--ds-color-text-tertiary)] sm:px-2 sm:text-xs">
           All day
         </div>
         {days.map((day) => (
-          <div key={day.toISOString()} className="flex min-h-[2.25rem] flex-col gap-1 border-r p-1 last:border-r-0">
+          <div key={day.toISOString()} className="flex min-h-[2.25rem] min-w-0 flex-col gap-1 overflow-hidden border-r p-1 last:border-r-0">
             {allDayOn(day).map((item) => (
               <ItemTile key={item.id} item={item} onOpen={onOpen} />
             ))}
@@ -94,11 +100,11 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
         </div>
 
         <div className="grid" style={{ gridTemplateColumns: columns }}>
-          <div>
+          <div className="sticky left-0 z-10 [background-color:var(--ds-color-bg-surface)]">
             {Array.from({ length: 24 }, (_, hour) => (
               <div
                 key={hour}
-                className="border-b border-r px-2 text-xs [color:var(--ds-color-text-tertiary)]"
+                className="border-b border-r px-1 text-[0.625rem] [color:var(--ds-color-text-tertiary)] sm:px-2 sm:text-xs"
                 style={{ height: `${HOUR_HEIGHT}rem` }}
               >
                 {format(new Date(2000, 0, 1, hour), 'h a')}
@@ -111,7 +117,7 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
             const lanes = lanesFor(timed)
 
             return (
-              <div key={day.toISOString()} className="relative border-r last:border-r-0">
+              <div key={day.toISOString()} className="relative min-w-0 overflow-hidden border-r last:border-r-0">
                 {Array.from({ length: 24 }, (_, hour) => (
                   <div
                     key={hour}
@@ -146,7 +152,7 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
                       type="button"
                       title={item.title}
                       onClick={() => onOpen?.(item)}
-                      className="absolute overflow-hidden rounded border-l-[3px] px-1.5 py-1 text-left"
+                      className="absolute overflow-hidden rounded border-l-[3px] px-1 py-1 text-left sm:px-1.5"
                       style={{
                         top: `${(start / 60) * HOUR_HEIGHT}rem`,
                         height: `${Math.max(((end - start) / 60) * HOUR_HEIGHT, 1.25)}rem`,
@@ -156,10 +162,10 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
                         borderColor: style.accent,
                       }}
                     >
-                      <span className="block text-xs font-semibold" style={{ color: style.accent }}>
+                      <span className="block truncate text-[0.625rem] font-semibold sm:text-xs" style={{ color: style.accent }}>
                         {format(new Date(item.startsAt), 'h:mm a')}
                       </span>
-                      <span className={cn('block truncate text-xs font-medium', style.struck && 'line-through')}>
+                      <span className={cn('block truncate text-[0.625rem] font-medium sm:text-xs', style.struck && 'line-through')}>
                         {style.struck ? `${style.label}: ${item.title}` : item.title}
                       </span>
                     </button>

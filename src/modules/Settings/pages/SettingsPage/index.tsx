@@ -65,14 +65,14 @@ const SettingsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="grid h-full place-items-center p-[1.5rem]">
+      <div className="grid h-full place-items-center p-3 sm:p-[1.5rem]">
         <Spinner />
       </div>
     )
   }
 
   return (
-    <div className="flex w-full flex-col gap-[1rem] p-[1.5rem]">
+    <div className="flex w-full flex-col gap-[1rem] p-3 sm:p-[1.5rem]">
       <header className="flex items-center gap-2">
         <SlidersHorizontal className="size-5 [color:var(--ds-color-brand)]" />
         <div>

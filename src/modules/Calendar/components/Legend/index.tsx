@@ -25,7 +25,7 @@ const Legend = ({ selected, onToggle }: LegendProps) => (
             type="button"
             aria-pressed={selected.includes(entry.key)}
             onClick={() => onToggle(entry.key)}
-            className={cn('flex cursor-pointer items-center gap-[0.375rem]', !isOn && 'opacity-40')}
+            className={cn('flex min-h-[1.75rem] cursor-pointer items-center gap-[0.375rem] sm:min-h-0', !isOn && 'opacity-40')}
           >
             <span
               aria-hidden="true"

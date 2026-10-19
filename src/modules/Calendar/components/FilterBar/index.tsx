@@ -51,7 +51,7 @@ const FilterBar = ({ filters, onChange }: FilterBarProps) => {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent hideWhenDetached collisionPadding={8} align="end" className="w-[22rem] space-y-3 p-4">
+      <PopoverContent hideWhenDetached collisionPadding={8} align="end" className="w-[min(22rem,calc(100vw-1.5rem))] space-y-3 p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold">Filters</p>
           <Button variant="link" className="text-sm" disabled={!active} onClick={() => onChange(EMPTY_FILTERS)}>

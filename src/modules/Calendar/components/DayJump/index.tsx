@@ -36,13 +36,13 @@ const DayJump = ({ date, label, className, onDateChange }: DayJumpProps) => {
         <button
           type="button"
           className={cn(
-            'flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-sm font-semibold',
+            'flex min-h-[1.75rem] min-w-0 cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-sm font-semibold sm:min-h-0',
             'hover:[background-color:var(--ds-color-bg-muted)]',
             className,
           )}
         >
-          {label ?? format(day, 'EEE, MMM d, yyyy')}
-          <ChevronDown className="size-3.5" />
+          <span className="truncate">{label ?? format(day, 'EEE, MMM d, yyyy')}</span>
+          <ChevronDown className="size-3.5 shrink-0" />
         </button>
       </PopoverTrigger>
 
@@ -50,10 +50,10 @@ const DayJump = ({ date, label, className, onDateChange }: DayJumpProps) => {
         hideWhenDetached
         collisionPadding={8}
         align="end"
-        className="w-[30rem] overflow-hidden p-0 [background-color:var(--ds-color-bg-surface)]"
+        className="w-[min(30rem,calc(100vw-1.5rem))] overflow-hidden p-0 [background-color:var(--ds-color-bg-surface)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="grid grid-cols-2 divide-x">
+        <div className="grid grid-cols-1 divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0">
           <div className="p-4">
             <MiniCalendar
               className="border-0 p-0"

@@ -102,7 +102,7 @@ const RemindersPopup = ({ role }: { role: Role }) => {
     <div
       role="region"
       aria-label={REMINDERS_COPY.title}
-      className="fixed right-[1.25rem] top-[4rem] z-[130] w-[23rem] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-[0.75rem] bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)]"
+      className="fixed inset-x-[0.5rem] top-[3.75rem] z-[130] overflow-hidden rounded-[0.75rem] bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)] sm:inset-x-auto sm:right-[1.25rem] sm:top-[4rem] sm:w-[23rem] sm:max-w-[calc(100vw-2.5rem)]"
     >
       <div className="flex items-center justify-between gap-2 px-[1rem] py-[0.75rem]">
         <p className="text-[0.9375rem] font-semibold">{REMINDERS_COPY.title}</p>
@@ -126,7 +126,7 @@ const RemindersPopup = ({ role }: { role: Role }) => {
         </span>
       </div>
 
-      <ul className="max-h-[22rem] overflow-y-auto border-t">
+      <ul className="max-h-[16rem] overflow-y-auto border-t sm:max-h-[22rem]">
         {rows.map((row) => (
           <li key={row.id}>
             <button

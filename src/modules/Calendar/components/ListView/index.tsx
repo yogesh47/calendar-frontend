@@ -43,8 +43,8 @@ const ListView = ({ month, items, onOpen }: {
 
           <div className="flex flex-col gap-[0.375rem]">
             {dayItems.map((item) => (
-              <div key={item.id} className="flex items-center gap-[0.5rem]">
-                <span className="w-[3.5rem] shrink-0 text-[0.75rem] tabular-nums text-muted-foreground">
+              <div key={item.id} className="flex items-center gap-[0.375rem] sm:gap-[0.5rem]">
+                <span className="w-[2.75rem] shrink-0 text-[0.6875rem] tabular-nums text-muted-foreground sm:w-[3.5rem] sm:text-[0.75rem]">
                   {item.isAllDay ? 'All day' : format(new Date(item.startsAt), 'HH:mm')}
                 </span>
                 <ItemTile item={item} onOpen={onOpen} className="flex-1" />

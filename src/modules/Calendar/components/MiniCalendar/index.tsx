@@ -76,7 +76,7 @@ const MiniCalendar = ({
         <button
           type="button"
           onClick={() => setPicking(!picking)}
-          className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-sm font-semibold hover:[background-color:var(--ds-color-bg-muted)]"
+          className="flex cursor-pointer items-center gap-1 rounded px-1 py-1.5 text-sm font-semibold hover:[background-color:var(--ds-color-bg-muted)] sm:py-0.5"
         >
           {format(month, 'MMMM yyyy')}
           <ChevronDown className={cn('size-3.5 transition-transform', picking && 'rotate-180')} />
@@ -87,7 +87,7 @@ const MiniCalendar = ({
             type="button"
             aria-label={picking ? 'Previous year' : 'Previous month'}
             onClick={() => step(true)}
-            className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
+            className="grid size-8 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)] sm:size-6"
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -95,7 +95,7 @@ const MiniCalendar = ({
             type="button"
             aria-label={picking ? 'Next year' : 'Next month'}
             onClick={() => step(false)}
-            className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
+            className="grid size-8 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)] sm:size-6"
           >
             <ChevronRight className="size-4" />
           </button>
@@ -137,7 +137,7 @@ const MiniCalendar = ({
               type="button"
               onClick={() => onPick(day)}
               className={cn(
-                'mx-auto grid size-7 cursor-pointer place-items-center rounded-full text-xs',
+                'mx-auto grid size-8 cursor-pointer place-items-center rounded-full text-xs sm:size-7',
                 !isSameMonth(day, month) && '[color:var(--ds-color-text-tertiary)]',
                 isToday(day) && !isSameDay(day, selected) && 'font-bold [color:var(--ds-color-brand)]',
                 isSameDay(day, selected)

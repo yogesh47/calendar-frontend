@@ -45,7 +45,7 @@ export const login = async (email: string, password: string): Promise<Session> =
   return { token: payload.access_token, user: payload.user }
 }
 
-// StrictMode dev me effect do baar chalata hai; ek hi waqt ki call share kar lete hain.
+// StrictMode runs effects twice in dev, so a call already in flight is shared.
 let meInFlight: Promise<Session['user'] | null> | null = null
 
 export const fetchMe = (token: string): Promise<Session['user'] | null> => {

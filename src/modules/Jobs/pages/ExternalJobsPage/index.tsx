@@ -2,7 +2,7 @@ import { ExternalLink } from 'lucide-react'
 import { EXTERNAL_JOBS } from '@/modules/Calendar/services/jobs'
 
 const ExternalJobsPage = () => (
-  <div className="flex w-full flex-col gap-4 p-6">
+  <div className="flex w-full flex-col gap-4 p-3 sm:p-6">
     <div>
       <h1 className="text-xl font-semibold">External Jobs</h1>
       <p className="text-sm [color:var(--ds-color-text-secondary)]">Off-campus openings students can apply to</p>

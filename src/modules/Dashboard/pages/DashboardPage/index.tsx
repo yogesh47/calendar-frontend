@@ -65,7 +65,7 @@ const DashboardPage = ({ role, userName }: DashboardPageProps) => {
   ]
 
   return (
-    <div className="flex w-full flex-col gap-4 p-6">
+    <div className="flex w-full flex-col gap-4 p-3 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Hello, {userName}</h1>
