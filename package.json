@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "VITE_API_BASE_URL=http://$(hostname -I | awk '{print $1}'):8001 vite --host 0.0.0.0 --port 5180 --strictPort",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"

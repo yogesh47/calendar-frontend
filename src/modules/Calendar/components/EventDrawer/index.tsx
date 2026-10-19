@@ -237,6 +237,7 @@ const EventDrawer = ({
       <DialogContent
         className={cn(
           'max-h-[92vh] max-w-none gap-0 p-0 sm:p-0 [background-color:var(--ds-color-bg-surface)]',
+          '[&>button]:top-5',
           showPreview ? 'w-[min(68rem,96vw)]' : 'w-[min(34rem,94vw)]',
         )}
         onInteractOutside={(event) => event.preventDefault()}
@@ -257,9 +258,17 @@ const EventDrawer = ({
             </div>
 
             {!isEdit && !reminderOnly && (
-              <Button type="button" variant="outline" size="sm" className="mr-9 sm:mr-16" onClick={fillDummy}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                title="Fill Data"
+                aria-label="Fill Data"
+                className="mr-11 px-2 sm:mr-16 sm:px-3"
+                onClick={fillDummy}
+              >
                 <Wand2 className="size-3.5" />
-                Fill Data
+                <span className="hidden sm:inline">Fill Data</span>
               </Button>
             )}
           </div>
@@ -675,7 +684,7 @@ const EventDrawer = ({
           </div>
 
           {showPreview && (
-            <div className="min-h-0 lg:h-full">
+            <div className="hidden min-h-0 lg:block lg:h-full">
               <DayPreview
                 date={draft.eventDate}
                 startTime={draft.startTime}
@@ -692,19 +701,19 @@ const EventDrawer = ({
           )}
         </div>
 
-        <DialogFooter className="flex-col-reverse items-stretch gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
+        <DialogFooter className="flex-row items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
           {isEdit && !isReminder && onNotifyMinorChange ? (
-            <label className="flex cursor-pointer items-center gap-2 text-sm [color:var(--ds-color-text-secondary)]">
+            <label className="flex min-w-0 cursor-pointer items-center gap-2 text-xs [color:var(--ds-color-text-secondary)] sm:text-sm">
               <Checkbox checked={notifyMinor} onCheckedChange={(value: boolean | 'indeterminate') => onNotifyMinorChange(value === true)} />
               Notify students about this change
             </label>
           ) : (
-          <span className="text-sm [color:var(--ds-color-text-secondary)]">
+          <span className="min-w-0 truncate text-xs [color:var(--ds-color-text-secondary)] sm:text-sm">
             {rules.needsAudience && count > 0 ? `${count} students will be notified` : ''}
           </span>
           )}
 
-          <span className="flex flex-wrap justify-end gap-2">
+          <span className="flex shrink-0 justify-end gap-2">
             {isEdit && canCancelEvent && !isReminder && (
               <Button type="button" variant="outline" onClick={onCancelEvent}>
                 Cancel Event

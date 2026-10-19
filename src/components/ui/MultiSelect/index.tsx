@@ -425,7 +425,7 @@ export function Combobox({
               placeholder
             )}
           </span>
-          {clearable && current && !disabled && (
+          {clearable && value && !disabled && (
             <X
               role="button"
               aria-label="Clear"

@@ -127,7 +127,7 @@ const DayPreview = ({ date, startTime, endTime, title, entries, onDateChange, on
   const block = (from: string, to: string) => {
     const start = minutesOf(from)
     const end = to ? minutesOf(to) : start
-    const span = end > start ? end - start : DAY_MINUTES - start
+    const span = !to ? STEP : end > start ? end - start : DAY_MINUTES - start
 
     return {
       top: `${(start / 60) * HOUR_HEIGHT}rem`,
