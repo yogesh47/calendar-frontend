@@ -257,7 +257,7 @@ const EventDrawer = ({
               </div>
             </div>
 
-            {!isEdit && !reminderOnly && (
+            {!isEdit && (
               <Button
                 type="button"
                 variant="outline"
