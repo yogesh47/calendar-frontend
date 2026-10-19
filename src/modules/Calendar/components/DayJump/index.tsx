@@ -50,7 +50,7 @@ const DayJump = ({ date, label, className, onDateChange }: DayJumpProps) => {
         hideWhenDetached
         collisionPadding={8}
         align="end"
-        className="w-[min(30rem,calc(100vw-1.5rem))] overflow-hidden p-0 [background-color:var(--ds-color-bg-surface)]"
+        className="max-h-[var(--radix-popover-content-available-height)] w-[min(30rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain p-0 [background-color:var(--ds-color-bg-surface)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="grid grid-cols-1 divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0">

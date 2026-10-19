@@ -36,8 +36,8 @@ const FilterBar = ({ filters, onChange }: FilterBarProps) => {
   const active = activeFilterCount(filters)
 
   const field = (label: string, node: React.ReactNode) => (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
+    <div className="space-y-1 sm:space-y-1.5">
+      <Label className="text-[0.75rem] sm:text-sm">{label}</Label>
       {node}
     </div>
   )
@@ -51,10 +51,15 @@ const FilterBar = ({ filters, onChange }: FilterBarProps) => {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent hideWhenDetached collisionPadding={8} align="end" className="w-[min(22rem,calc(100vw-1.5rem))] space-y-3 p-4">
+      <PopoverContent
+        hideWhenDetached
+        collisionPadding={16}
+        align="end"
+        className="max-h-[var(--radix-popover-content-available-height)] w-[min(17rem,calc(100vw-4rem))] space-y-2 overflow-y-auto overscroll-contain p-3 sm:w-[min(22rem,calc(100vw-1.5rem))] sm:space-y-3 sm:p-4"
+      >
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">Filters</p>
-          <Button variant="link" className="text-sm" disabled={!active} onClick={() => onChange(EMPTY_FILTERS)}>
+          <p className="text-[0.8125rem] font-semibold sm:text-sm">Filters</p>
+          <Button variant="link" className="text-[0.8125rem] sm:text-sm" disabled={!active} onClick={() => onChange(EMPTY_FILTERS)}>
             Clear
           </Button>
         </div>

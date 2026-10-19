@@ -41,7 +41,7 @@ const DayAgenda = ({ day, items, hiddenCount, trigger, onOpen }: DayAgendaProps)
 
     <PopoverContent hideWhenDetached collisionPadding={8}
       align="start"
-      className="w-[min(20rem,calc(100vw-1.5rem))] p-0 [background-color:var(--ds-color-bg-surface)]"
+      className="max-h-[var(--radix-popover-content-available-height)] w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain p-0 [background-color:var(--ds-color-bg-surface)]"
       onClick={(event) => event.stopPropagation()}
     >
       <p className="border-b px-4 py-3 text-base font-semibold">{format(day, 'EEE, MMM d, yyyy')}</p>

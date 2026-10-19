@@ -19,7 +19,7 @@ import EventDrawer from '../../components/EventDrawer'
 import CancelDialog from '../../components/CancelDialog'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EventDetailPanel from '../../components/EventDetailPanel'
-import { CalendarError, CalendarNotice, CalendarSkeleton } from '../../components/CalendarState'
+import { CalendarError, CalendarSkeleton } from '../../components/CalendarState'
 import ReviewChangesDialog from '../../components/ReviewChangesDialog'
 import { countAudience, diffAudience } from '../../services/audience'
 import { newDraftOn } from '../../services/tpoEvents'
@@ -177,16 +177,6 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
     }
   }
 
-  const hasFilters =
-    filters.kinds.length > 0 ||
-    filters.types.length > 0 ||
-    filters.companies.length > 0 ||
-    filters.courses.length > 0 ||
-    filters.batches.length > 0 ||
-    filters.departments.length > 0 ||
-    filters.opportunityTypes.length > 0 ||
-    filters.createdByMe
-
   const visible = useMemo(() => {
     const fromEvents = events
       .filter((event) => event.draft.eventType !== 'nudge')
@@ -224,16 +214,6 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
         : filters.kinds.includes(item.kind),
     )
   }, [events, filters, isTpo])
-
-  const inShownRange = (item: { startsAt: string }): boolean => {
-    const day = format(new Date(item.startsAt), 'yyyy-MM-dd')
-
-    if (view === 'month' || view === 'list') return day.startsWith(format(month, 'yyyy-MM'))
-
-    return shownDays.some((entry) => format(entry, 'yyyy-MM-dd') === day)
-  }
-
-  const shownItems = visible.filter(inShownRange)
 
   const openCreate = (eventDate: string) =>
     setDrawer({
@@ -430,24 +410,26 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
                 <Plus className="size-3.5" />
                 {isTpo ? 'New Event' : 'Add Reminder'}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
-                aria-label={`Previous ${stepName}`}
-                onClick={() => goBack()}
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
-                aria-label={`Next ${stepName}`}
-                onClick={() => goForward()}
-              >
-                <ChevronRight className="size-4" />
-              </Button>
+              <span className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={`Previous ${stepName}`}
+                  onClick={() => goBack()}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={`Next ${stepName}`}
+                  onClick={() => goForward()}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </span>
               <DayJump
                 date={format(selectedDay, 'yyyy-MM-dd')}
                 label={rangeLabel}
@@ -558,13 +540,6 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
             <CalendarError message={CALENDAR_STATE_COPY.loadFailed} onRetry={retry} />
           ) : (
           <>
-          {!shownItems.length && hasFilters && (
-            <CalendarNotice
-              message="No events match these filters."
-              actionLabel="Clear filters"
-              onAction={() => setFilters(EMPTY_FILTERS)}
-            />
-          )}
           {isMobile && view === 'day' && (
             <WeekStrip
               selected={selectedDay}
