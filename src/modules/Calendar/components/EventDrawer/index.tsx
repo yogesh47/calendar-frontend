@@ -179,7 +179,11 @@ const EventDrawer = ({
   }
 
   const fillDummy = () => {
-    const day = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+    const start = new Date(Date.now() + 61 * 60000)
+    const end = new Date(start.getTime() + 90 * 60000)
+    const clock = (moment: Date) =>
+      `${String(moment.getHours()).padStart(2, '0')}:${String(moment.getMinutes()).padStart(2, '0')}`
+    const day = format(start, 'yyyy-MM-dd')
 
     form.setValues({
       ...draft,
@@ -187,13 +191,14 @@ const EventDrawer = ({
       company: rules.needsCompany ? COMPANY_OPTIONS[0] : '',
       eventDate: day,
       endDate: day,
-      startTime: rules.needsTime ? '10:00' : isReminder ? '15:00' : '',
-      endTime: rules.needsTime ? '11:30' : '',
+      startTime: rules.needsTime || isReminder ? clock(start) : '',
+      endTime: rules.needsTime ? clock(end) : '',
       mode: rules.needsMode ? 'offline' : '',
       venue: rules.needsMode ? 'Auditorium, Block A' : '',
       onlinePlatform: '',
       description: rules.needsAudience ? 'Bring your resume and ID card.' : '',
       note: isReminder ? 'Ask about the shortlist date' : '',
+      remindBefore: '1_hour',
       audience: rules.needsAudience
         ? {
             opportunityType: 'job',
@@ -231,20 +236,20 @@ const EventDrawer = ({
     <Dialog open={open} modal={false} onOpenChange={(next) => !next && close()}>
       <DialogContent
         className={cn(
-          'max-h-[92vh] max-w-none gap-0 p-0 [background-color:var(--ds-color-bg-surface)]',
+          'max-h-[92vh] max-w-none gap-0 p-0 sm:p-0 [background-color:var(--ds-color-bg-surface)]',
           showPreview ? 'w-[min(68rem,96vw)]' : 'w-[min(34rem,94vw)]',
         )}
         onInteractOutside={(event) => event.preventDefault()}
       >
         <form onSubmit={form.handleSubmit} noValidate className="contents">
         <DialogHeader className="px-3 pb-3 pt-4 sm:px-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-lg [background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]">
                 <CalendarPlus className="size-5" />
               </span>
-              <div>
-                <DialogTitle>
+              <div className="min-w-0">
+                <DialogTitle className="whitespace-nowrap">
                 {reminderOnly ? (isEdit ? 'Edit Reminder' : 'Add Reminder') : isEdit ? 'Edit Event' : 'Create New Event'}
               </DialogTitle>
                 <DialogDescription className="sr-only">Event details</DialogDescription>

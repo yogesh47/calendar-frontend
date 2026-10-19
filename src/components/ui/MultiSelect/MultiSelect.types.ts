@@ -56,4 +56,8 @@ export interface ComboboxProps {
   onSearch?: OptionFetcher;
   disabled?: boolean;
   className?: string;
+  /** Shows a clear (x) next to the chevron once a value is picked. */
+  clearable?: boolean;
+  /** Shown in the trigger when the value matches no option, so it still reads. */
+  valueLabel?: string;
 }

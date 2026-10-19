@@ -28,15 +28,21 @@ interface TimeSelectProps {
   onChange: (value: string) => void
 }
 
-const TimeSelect = ({ value, onChange }: TimeSelectProps) => (
-  <Combobox
-    className="w-full"
-    placeholder="Select time"
-    options={TIME_OPTIONS}
-    value={value}
-    onChange={onChange}
-  />
-)
+const TimeSelect = ({ value, onChange }: TimeSelectProps) => {
+  const [hour, minute] = value ? value.split(':').map(Number) : []
+
+  return (
+    <Combobox
+      clearable
+      className="w-full"
+      placeholder="Select time"
+      options={TIME_OPTIONS}
+      value={value}
+      valueLabel={value ? format(new Date(2000, 0, 1, hour, minute), 'h:mm a') : undefined}
+      onChange={onChange}
+    />
+  )
+}
 
 export default TimeSelect
 

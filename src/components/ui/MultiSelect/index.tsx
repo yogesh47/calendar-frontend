@@ -387,6 +387,8 @@ export function Combobox({
   disabled,
   className,
   pageSize,
+  clearable,
+  valueLabel,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const remoteState = useOptions(options, onSearch);
@@ -406,16 +408,35 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" disabled={disabled} className={cn(triggerBase, TRIGGER_SIZE[size], className)}>
-          <span className={cn('flex-1 truncate text-left', !current && '[color:var(--ds-color-text-tertiary)]')}>
+          <span
+            className={cn(
+              'flex-1 truncate text-left',
+              !current && !(value && valueLabel) && '[color:var(--ds-color-text-tertiary)]',
+            )}
+          >
             {current ? (
               <span className="inline-flex items-center gap-2">
                 {current.icon}
                 {current.label}
               </span>
+            ) : value && valueLabel ? (
+              valueLabel
             ) : (
               placeholder
             )}
           </span>
+          {clearable && current && !disabled && (
+            <X
+              role="button"
+              aria-label="Clear"
+              className="size-4 shrink-0 cursor-pointer opacity-60 hover:opacity-100"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onChange('');
+              }}
+            />
+          )}
           <ChevronDown className="size-4 shrink-0 opacity-60" />
         </button>
       </PopoverTrigger>

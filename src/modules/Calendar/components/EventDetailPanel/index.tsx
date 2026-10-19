@@ -189,7 +189,7 @@ const EventDetailPanel = ({
     <>
       <div className="fixed inset-0 z-40 bg-black/50" aria-hidden />
       <Dialog open modal={false} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className="max-h-[90vh] w-[min(34rem,94vw)] max-w-none gap-0 p-0 [background-color:var(--ds-color-bg-surface)]">
+        <DialogContent className="max-h-[90vh] w-[min(34rem,94vw)] max-w-none gap-0 p-0 sm:p-0 [background-color:var(--ds-color-bg-surface)]">
           <DialogHeader className="space-y-1.5 border-b px-5 pb-4 pr-12 pt-5">
             <DialogTitle
               className={cn(
