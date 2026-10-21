@@ -22,7 +22,7 @@ import EventDetailPanel from '../../components/EventDetailPanel'
 import { CalendarError, CalendarSkeleton } from '../../components/CalendarState'
 import ReviewChangesDialog from '../../components/ReviewChangesDialog'
 import { countAudience, diffAudience } from '../../services/audience'
-import { newDraftOn } from '../../services/tpoEvents'
+import { newDraftOn, newReminderOn } from '../../services/tpoEvents'
 import { onOpenEventRequest, onWindowFocus } from '../../services/store'
 import {
   cancelEvent,
@@ -218,9 +218,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role = 'student' }: CalendarP
   const openCreate = (eventDate: string) =>
     setDrawer({
       open: true,
-      draft: isTpo
-        ? newDraftOn(eventDate)
-        : { ...newDraftOn(eventDate), eventType: 'my_reminder', mode: '', endTime: '', remindBefore: '1_hour' },
+      draft: isTpo ? newDraftOn(eventDate) : newReminderOn(eventDate),
       editing: null,
     })
 

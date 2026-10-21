@@ -26,7 +26,13 @@ const ask = async <T,>(path: string, init?: RequestInit): Promise<T> => {
 
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new Error(typeof body?.detail === 'string' ? body.detail : 'Something went wrong. Please try again.')
+    throw new Error(
+      typeof body?.message === 'string'
+        ? body.message
+        : typeof body?.detail === 'string'
+          ? body.detail
+          : 'Something went wrong. Please try again.',
+    )
   }
 
   return (await response.json()) as T

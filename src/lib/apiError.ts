@@ -1,13 +1,24 @@
 export type FieldError = { field: string; message: string }
 
+export type ApiErrorBody = {
+  message?: string
+  /** @deprecated the API answers with `message`; kept so an older one still reads. */
+  detail?: string
+  code?: string
+  field?: string
+  errors?: FieldError[]
+}
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly field?: string
   readonly errors: FieldError[]
 
-  constructor(status: number, body: { detail?: string; code?: string; field?: string; errors?: FieldError[] }) {
-    super(body.detail || 'Something went wrong. Please try again.')
+  constructor(status: number, body: ApiErrorBody) {
+    // `message` is what the API answers with, the same key SkillsBridge uses.
+    // `detail` is read as a fallback so an older build of the API still speaks.
+    super(body.message || body.detail || 'Something went wrong. Please try again.')
     this.name = 'ApiError'
     this.status = status
     this.code = body.code || 'error'
