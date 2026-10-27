@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Link2,
   MapPin,
+  Repeat,
   StickyNote,
   Trash2,
   Users,
@@ -25,6 +26,8 @@ import {
 import { isRecentlyUpdated } from '../../helpers'
 import { audienceLine, itemFromEvent, labelFor, rulesFor } from '../../helpers/tpo'
 import { hasText, safeHtml } from '../../helpers/richText'
+import { imageSrc } from '../../services/api'
+import { REPEAT_OPTIONS } from '../../constants/tpo'
 import {
   ASSESSMENT_EMAIL_NOTE,
   CALENDAR_ITEM_STYLE,
@@ -50,6 +53,18 @@ interface EventDetailPanelProps {
   onDelete: () => void
   onDeleteForever: () => void
   onRemindMe?: () => void
+  /** The owner picks — or changes — who the event reaches. */
+  onChooseAudience?: () => void
+}
+
+// "weekly;2;2026-12-31" → "Every 2 weeks until 31 Dec 2026"
+const repeatLine = (rule?: string): string | undefined => {
+  if (!rule) return undefined
+  const [freq, interval, until] = rule.split(';')
+  const unit = REPEAT_OPTIONS.find((option) => option.value === freq)?.unit ?? freq
+  const every = Number(interval) > 1 ? `Every ${interval} ${unit}s` : `Every ${unit}`
+
+  return `${every} until ${format(new Date(`${until}T00:00:00`), 'd MMM yyyy')}`
 }
 
 const RICH_TEXT =
@@ -82,6 +97,7 @@ const EventDetailPanel = ({
   onDelete,
   onDeleteForever,
   onRemindMe,
+  onChooseAudience,
 }: EventDetailPanelProps) => {
   if (!event) return null
 
@@ -141,6 +157,8 @@ const EventDetailPanel = ({
 
   const isAutoDeadline = draft.eventType === 'deadline' && draft.linkedType === 'job_deadline'
 
+  const hasAudience = draft.audience.courses.length > 0
+
   const subtitle = isNudge
     ? CALENDAR_ITEM_STYLE.nudge.label
     : [labelFor(draft.eventType), draft.company].filter(Boolean).join(' · ')
@@ -178,6 +196,12 @@ const EventDetailPanel = ({
     </>
   ) : isMine && !hasEnded ? (
     <>
+      {onChooseAudience && rules.needsAudience && (
+        <Button variant="outline" onClick={onChooseAudience}>
+          <Users className="size-4" />
+          {hasAudience ? 'Audience' : 'Choose audience'}
+        </Button>
+      )}
       <Button variant="outline" onClick={onCancel}>
         Cancel Event
       </Button>
@@ -238,6 +262,20 @@ const EventDetailPanel = ({
           </DialogHeader>
 
           <div className="max-h-[60vh] space-y-2.5 overflow-y-auto px-5 py-4">
+            {draft.imageUrl && (
+              <img
+                src={imageSrc(draft.imageUrl)}
+                alt=""
+                className="mb-3.5 max-h-56 w-full rounded-md border object-cover"
+              />
+            )}
+
+            {isMine && !isCancelled && rules.needsAudience && !isAutoDeadline && !hasAudience && (
+              <p className="mb-3.5 rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [color:var(--ds-color-warning-text)]">
+                Published, but no students see it yet. Choose who it reaches.
+              </p>
+            )}
+
             {isGone && !isCancelled && (
               <p className="mb-3.5 rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-bg-subtle)] [color:var(--ds-color-text-secondary)]">
                 This event no longer applies to you.
@@ -266,6 +304,7 @@ const EventDetailPanel = ({
             <Row icon={Clock} label="Time">
               {isNudge ? clock(draft.startTime) : isReminder && !draft.startTime ? 'All day' : timeLine}
             </Row>
+            <Row icon={Repeat} label="Repeats">{repeatLine(event.recurrence)}</Row>
             <Row icon={MapPin} label="Venue">
               {venueLine && (
                 <span className="flex flex-wrap items-center gap-2">
@@ -288,7 +327,7 @@ const EventDetailPanel = ({
             )}
 
             {!isNudge && !isAutoDeadline && rules.needsAudience && (
-              <Row icon={Users} label="Audience">{audienceLine(draft)}</Row>
+              <Row icon={Users} label="Audience">{hasAudience ? audienceLine(draft) : 'Not chosen yet'}</Row>
             )}
             {!isNudge && !isAutoDeadline && rules.needsAudience && (
               <Row icon={BellRing} label="Notified">{`${event.notifiedCount} students`}</Row>

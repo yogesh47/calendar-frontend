@@ -2,7 +2,7 @@ import { API_BASE_URL } from '@/modules/Auth/constants'
 import { readSession, signOutOnExpiry } from '@/modules/Auth/services'
 import { ApiError, OFFLINE_MESSAGE } from '@/lib/apiError'
 import { EMPTY_DRAFT } from '../constants/tpo'
-import type { EventDraft, TpoEvent } from '../types/tpo'
+import type { Audience, EventDraft, TpoEvent } from '../types/tpo'
 
 export type ApiNotification = {
   notification_id: string
@@ -52,6 +52,9 @@ type ApiEvent = {
   change_summary: string | null
   change_reason: string | null
   deadline_counts: { eligible: number; applied: number; not_applied: number } | null
+  series_id?: string | null
+  recurrence?: string | null
+  image_url?: string | null
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -98,6 +101,8 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
   changeSummary: entry.change_summary ?? undefined,
   changeReason: entry.change_reason ?? undefined,
   deadlineCounts: entry.deadline_counts ?? undefined,
+  seriesId: entry.series_id ?? undefined,
+  recurrence: entry.recurrence ?? undefined,
   draft: {
     ...EMPTY_DRAFT,
     eventType: entry.event_type as EventDraft['eventType'],
@@ -123,6 +128,7 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
     remindBefore: (entry.remind_before as EventDraft['remindBefore']) ?? 'none',
     linkedType: (entry.linked_type as EventDraft['linkedType']) ?? null,
     linkedId: entry.linked_id ?? null,
+    imageUrl: entry.image_url ?? '',
     linkedJob: entry.linked_job
       ? {
           kind: entry.linked_job.kind as 'campus' | 'external',
@@ -147,8 +153,10 @@ const toPayload = (draft: EventDraft) => ({
   online_platform: draft.onlinePlatform || null,
   description: draft.description || null,
   note: draft.note || null,
+  // The audience is picked after publishing, so an event goes out without one
+  // until then — an empty selection is "not chosen yet", not "nobody".
   audience:
-    draft.eventType === 'my_reminder'
+    draft.eventType === 'my_reminder' || !draft.audience.courses.length
       ? null
       : {
           opportunity_type: draft.audience.opportunityType,
@@ -162,6 +170,8 @@ const toPayload = (draft: EventDraft) => ({
   change_summary: draft.changeSummary || null,
   change_reason: draft.changeReason || null,
   notify_on_change: draft.notifyOnChange ?? true,
+  recurrence: draft.recurrence,
+  image_url: draft.imageUrl || null,
   linked_job: draft.linkedJob
     ? {
         kind: draft.linkedJob.kind,
@@ -193,13 +203,49 @@ export const updateEvent = async (eventId: string, draft: EventDraft): Promise<T
     await ask<ApiEvent>(`/calendar/events/${eventId}`, { method: 'PUT', body: JSON.stringify(toPayload(draft)) }),
   )
 
-export const cancelEvent = async (eventId: string, reason: string, note: string): Promise<TpoEvent> =>
+export const cancelEvent = async (
+  eventId: string,
+  reason: string,
+  note: string,
+  scope: 'one' | 'series' = 'one',
+): Promise<TpoEvent> =>
   toEvent(
     await ask<ApiEvent>(`/calendar/events/${eventId}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ reason, note: note || null }),
+      body: JSON.stringify({ reason, note: note || null, scope }),
     }),
   )
+
+/** Who a published event reaches. Saving notifies them; a series gets it from this date on. */
+export const setEventAudience = async (eventId: string, audience: Audience): Promise<TpoEvent> =>
+  toEvent(
+    await ask<ApiEvent>(`/calendar/events/${eventId}/audience`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        audience: {
+          opportunity_type: audience.opportunityType,
+          courses: audience.courses,
+          batches: audience.batches,
+          departments: audience.departments,
+        },
+      }),
+    }),
+  )
+
+export const uploadImage = async (dataUrl: string): Promise<string> =>
+  (
+    await ask<{ image_url: string }>('/calendar/images', {
+      method: 'POST',
+      body: JSON.stringify({ data_url: dataUrl }),
+    })
+  ).image_url
+
+/** The stored path is relative to the API, not to this app. */
+export const imageSrc = (imageUrl: string): string => (imageUrl ? `${API_BASE_URL}${imageUrl}` : '')
+
+/** The signed-in user's private .ics subscription URL. */
+export const fetchFeedLink = async (): Promise<string> =>
+  (await ask<{ url: string }>('/calendar/feed/link')).url
 
 export const deleteReminder = (eventId: string): Promise<void> =>
   ask<void>(`/calendar/events/${eventId}`, { method: 'DELETE' })

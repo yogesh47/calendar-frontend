@@ -22,17 +22,28 @@ interface CancelDialogProps {
   title: string
   dateLabel: string
   notifyCount: number
+  /** A repeating event also asks whether the later occurrences go too. */
+  isRecurring?: boolean
   onBack: () => void
   onEditDate: () => void
-  onConfirm: (reason: CancelReason, note: string) => void
+  onConfirm: (reason: CancelReason, note: string, scope: 'one' | 'series') => void
 }
 
-const CancelDialog = ({ open, title, dateLabel, notifyCount, onBack, onEditDate, onConfirm }: CancelDialogProps) => {
+const CancelDialog = ({
+  open,
+  title,
+  dateLabel,
+  notifyCount,
+  isRecurring,
+  onBack,
+  onEditDate,
+  onConfirm,
+}: CancelDialogProps) => {
   const form = useFormik({
-    initialValues: { reason: '', note: '' },
+    initialValues: { reason: '', note: '', scope: 'one' as 'one' | 'series' },
     enableReinitialize: true,
     validationSchema: cancelSchema,
-    onSubmit: (values) => onConfirm(values.reason as CancelReason, values.note),
+    onSubmit: (values) => onConfirm(values.reason as CancelReason, values.note, values.scope),
   })
 
   return (
@@ -52,6 +63,30 @@ const CancelDialog = ({ open, title, dateLabel, notifyCount, onBack, onEditDate,
               {notifyCount} students will be notified.
             </p>
           </div>
+
+          {isRecurring && (
+            <div className="space-y-2">
+              <Label>This is a repeating event</Label>
+              <RadioGroup
+                className="space-y-2"
+                value={form.values.scope}
+                onValueChange={(value) => form.setFieldValue('scope', value)}
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="one" id="cancel-scope-one" />
+                  <Label htmlFor="cancel-scope-one" className="cursor-pointer font-normal">
+                    Only this date
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="series" id="cancel-scope-series" />
+                  <Label htmlFor="cancel-scope-series" className="cursor-pointer font-normal">
+                    This and all later dates
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>

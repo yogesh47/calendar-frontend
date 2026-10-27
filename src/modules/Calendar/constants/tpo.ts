@@ -6,6 +6,7 @@ import type {
   EventDraft,
   OpportunityType,
   RemindBefore,
+  RepeatFrequency,
   TpoEventType,
 } from '../types/tpo'
 
@@ -95,6 +96,13 @@ export const MODE_OPTIONS: { value: 'offline' | 'online'; label: string }[] = [
   { value: 'online', label: 'Online' },
 ]
 
+/*
+  Reminder ki ghanti kitni pehle baje. `none` par backend kuch schedule hi nahi
+  karta, isliye nayi reminder isi par khulti hai — warna banti to hai, par bajti
+  kabhi nahi.
+*/
+export const DEFAULT_REMIND_BEFORE: RemindBefore = '1_hour'
+
 export const REMIND_BEFORE_OPTIONS: { value: RemindBefore; label: string }[] = [
   { value: 'none', label: 'None' },
   { value: 'at_time', label: 'At the time' },
@@ -102,6 +110,20 @@ export const REMIND_BEFORE_OPTIONS: { value: RemindBefore; label: string }[] = [
   { value: '1_hour', label: '1 hour before' },
   { value: '1_day', label: '1 day before' },
 ]
+
+export const REPEAT_OPTIONS: { value: RepeatFrequency | 'none'; label: string; unit: string }[] = [
+  { value: 'none', label: 'Does not repeat', unit: '' },
+  { value: 'daily', label: 'Daily', unit: 'day' },
+  { value: 'weekly', label: 'Weekly', unit: 'week' },
+  { value: 'monthly', label: 'Monthly', unit: 'month' },
+]
+
+/** The backend caps a series at a year and at this many occurrences. */
+export const REPEAT_MAX_OCCURRENCES = 52
+
+export const IMAGE_MAX_BYTES = 2 * 1024 * 1024
+
+export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 
 export const CANCEL_REASON_OPTIONS: { value: CancelReason; label: string }[] = [
   { value: 'postponed', label: 'Postponed' },
@@ -158,6 +180,8 @@ export const EMPTY_DRAFT: EventDraft = {
   linkedJob: null,
   linkedType: null,
   linkedId: null,
+  recurrence: null,
+  imageUrl: '',
 }
 
 export const EMPTY_FILTERS: CalendarFilters = {

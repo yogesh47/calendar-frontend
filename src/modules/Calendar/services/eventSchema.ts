@@ -28,7 +28,14 @@ export const eventSchema = yup.object({
   startTime: yup.string().test('start-needed', 'Start time is required.', function (value) {
     return !needsTime(this.parent.eventType) || Boolean(value)
   }),
-  endDate: yup.string(),
+  endDate: yup
+    .string()
+    .test('end-date-after-start', 'End date cannot be before the start date.', function (value) {
+      const { eventType, eventDate } = this.parent
+      if (!needsTime(eventType) || !value || !eventDate) return true
+
+      return value >= eventDate
+    }),
   endTime: yup
     .string()
     .test('end-needed', 'End time is required.', function (value) {
@@ -61,16 +68,29 @@ export const eventSchema = yup.object({
   audience: yup.object({
     opportunityType: yup.string().required(),
     courses: yup.array().test('courses-needed', 'Select at least one course.', function (value) {
-      return !needsAudience(this.options.context?.eventType) || Boolean(value?.length)
+      return !this.options.context?.withAudience || !needsAudience(this.options.context?.eventType) || Boolean(value?.length)
     }),
     batches: yup.array().test('batches-needed', 'Select at least one batch.', function (value) {
-      return !needsAudience(this.options.context?.eventType) || Boolean(value?.length)
+      return !this.options.context?.withAudience || !needsAudience(this.options.context?.eventType) || Boolean(value?.length)
     }),
     departments: yup.array().test('departments-needed', 'Select at least one department.', function (value) {
-      return !needsAudience(this.options.context?.eventType) || Boolean(value?.length)
+      return !this.options.context?.withAudience || !needsAudience(this.options.context?.eventType) || Boolean(value?.length)
     }),
   }),
 })
+
+// Repeat until — checked only when a repeat is picked.
+export const recurrenceError = (draft: EventDraft): string | undefined => {
+  if (!draft.recurrence) return undefined
+  if (!draft.recurrence.until) return 'Pick the last date it repeats on.'
+  if (draft.recurrence.until < draft.eventDate) return 'Repeat until cannot be before the start date.'
+
+  const yearLater = new Date(`${draft.eventDate}T00:00:00`)
+  yearLater.setFullYear(yearLater.getFullYear() + 1)
+  if (new Date(`${draft.recurrence.until}T00:00:00`) > yearLater) return 'An event can repeat for at most one year.'
+
+  return undefined
+}
 
 export const linkedJobSchema = yup.object({
   kind: yup.string().oneOf(['campus', 'external']).required(),
@@ -99,7 +119,7 @@ export const cancelSchema = yup.object({
 })
 
 export const isPublishable = (draft: EventDraft): boolean => {
-  if (!eventSchema.isValidSync(draft, { context: { eventType: draft.eventType } })) return false
+  if (!eventSchema.isValidSync(draft, { context: { eventType: draft.eventType, withAudience: true } })) return false
   if (!needsAudience(draft.eventType)) return true
   return countAudience(draft.audience) > 0
 }

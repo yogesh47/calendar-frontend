@@ -26,17 +26,24 @@ export const dayShift = (from: string, to: string): number =>
 interface TimeSelectProps {
   value: string
   onChange: (value: string) => void
+  /**
+   * Isse pehle ka koi waqt nahi dikhega. End time ke liye start time yahan
+   * diya jaata hai, taaki aisa waqt chuna hi na ja sake jo shuruaat se pehle
+   * ho — rokne se behtar hai ki wo option saamne aaye hi na.
+   */
+  after?: string
 }
 
-const TimeSelect = ({ value, onChange }: TimeSelectProps) => {
+const TimeSelect = ({ value, onChange, after }: TimeSelectProps) => {
   const [hour, minute] = value ? value.split(':').map(Number) : []
+  const options = after ? TIME_OPTIONS.filter((option) => option.value > after) : TIME_OPTIONS
 
   return (
     <Combobox
       clearable
       className="w-full"
       placeholder="Select time"
-      options={TIME_OPTIONS}
+      options={options}
       value={value}
       valueLabel={value ? format(new Date(2000, 0, 1, hour, minute), 'h:mm a') : undefined}
       onChange={onChange}

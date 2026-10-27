@@ -32,6 +32,15 @@ export type Audience = {
   departments: string[]
 }
 
+export type RepeatFrequency = 'daily' | 'weekly' | 'monthly'
+
+/** One row per occurrence is written on create; this is the rule they come from. */
+export type Recurrence = {
+  freq: RepeatFrequency
+  interval: number
+  until: string
+}
+
 export type EventDraft = {
   eventType: TpoEventType
   title: string
@@ -50,6 +59,10 @@ export type EventDraft = {
   linkedJob: LinkedJob | null
   linkedType: 'event' | 'job_deadline' | null
   linkedId: string | null
+  /** Only on create — an existing occurrence is edited on its own. */
+  recurrence: Recurrence | null
+  /** A path from uploadImage(), e.g. /calendar/images/<id>.png */
+  imageUrl: string
   changeSummary?: string
   changeReason?: string
   notifyOnChange?: boolean
@@ -71,6 +84,10 @@ export type TpoEvent = {
   changeSummary?: string
   changeReason?: string
   deadlineCounts?: { eligible: number; applied: number; not_applied: number }
+  /** Shared by every occurrence of a recurring event. */
+  seriesId?: string
+  /** As stored by the backend: "weekly;1;2026-12-31". */
+  recurrence?: string
 }
 
 export type AudienceDiff = {
