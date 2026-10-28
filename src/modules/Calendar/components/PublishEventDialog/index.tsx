@@ -32,7 +32,7 @@ import {
   MODE_OPTIONS,
   REMINDER_PRIVACY,
 } from '../../constants/tpo'
-import { InfoNote, Required, Section, clock } from '../parts'
+import { InfoNote, Required, clock } from '../parts'
 import type { DayEntry } from '../DayPreview'
 import type { EventDraft, EventMode, LinkedJob } from '../../types/tpo'
 
@@ -119,7 +119,6 @@ const PublishEventDialog = ({
   */
   // Yahan har cheez event ki hai — koi step nahi, koi reminder shakl nahi.
   const onStepTwo = true
-  const basicsLikeReminder = false
   // The day panel on the right stays for everyone — student reminder and TPO
   // event, first step and second. A date is all it needs.
   // Day panel calendar ke modal me hai; yahan dobara nahi.
@@ -207,7 +206,7 @@ const PublishEventDialog = ({
         onInteractOutside={(event) => event.preventDefault()}
       >
         <form onSubmit={form.handleSubmit} noValidate className="contents">
-        <DialogHeader className="px-3 pb-3 pr-16 pt-4 sm:px-4 sm:pr-16">
+        <DialogHeader className="px-3 pb-3 pr-14 pt-4 text-left sm:px-4 sm:pr-16">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-lg [background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]">
@@ -220,17 +219,8 @@ const PublishEventDialog = ({
                   wo field ban kar nahi aatin — par dikhni chahiye, warna banda
                   bhool jaata hai ki wo kya publish kar raha hai.
                 */}
-                <DialogDescription asChild>
-                  <span className="flex min-w-0 items-center gap-2 text-sm">
-                    <span className="truncate font-medium [color:var(--ds-color-text-primary)]">
-                      {draft.title || 'Untitled'}
-                    </span>
-                    {!isReminder && (
-                      <span className="hidden max-w-[50%] shrink-0 truncate rounded-full border px-2 py-0.5 text-xs [color:var(--ds-color-text-secondary)] sm:inline">
-                        {labelFor(draft.eventType)}
-                      </span>
-                    )}
-                  </span>
+                <DialogDescription className="truncate text-sm">
+                  {[draft.title || 'Untitled', !isReminder && labelFor(draft.eventType)].filter(Boolean).join(' · ')}
                 </DialogDescription>
               </div>
             </div>
@@ -258,10 +248,8 @@ const PublishEventDialog = ({
             showPreview && 'lg:grid-cols-[1fr_24rem]',
           )}
         >
-          <div className="min-h-0 min-w-0 space-y-3 overflow-y-auto pr-1">
-          <Section title={basicsLikeReminder ? 'Reminder' : 'Event basics'}>
-
-
+          <div className="min-h-0 min-w-0 space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+          <div className="min-w-0 space-y-4 rounded-xl border p-4 [background-color:var(--ds-color-bg-surface)]">
           {isReminder && !reminderOnly && (
             <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
           )}
@@ -272,7 +260,7 @@ const PublishEventDialog = ({
           */}
           {rules.needsCompany && onStepTwo && (
             <div className="space-y-1.5">
-              <Label>Company (optional)</Label>
+              <Label>Company</Label>
               <Combobox
                 value={draft.company}
                 placeholder="Select company"
@@ -299,10 +287,9 @@ const PublishEventDialog = ({
             </p>
           )}
 
-          </Section>
 
           {rules.needsMode && onStepTwo && (
-            <Section title="Where it happens">
+            <>
               <div className="space-y-1.5">
                 <Label>
                   Mode <Required />
@@ -321,7 +308,7 @@ const PublishEventDialog = ({
                     </div>
                   ))}
                 </RadioGroup>
-                {errorFor('mode') && <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('mode')}</p>}
+                {errorFor('mode') && <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{errorFor('mode')}</p>}
               </div>
 
               {draft.mode === 'offline' && (
@@ -357,14 +344,11 @@ const PublishEventDialog = ({
                   onBlur={form.handleBlur}
                 />
               )}
-            </Section>
+            </>
           )}
 
           {rules.needsAudience && onStepTwo && (
-            <Section
-              title="Target Audience"
-              caption="Leave it empty to publish now and choose later from the event."
-            >
+            <>
               <AudienceFields
                 idPrefix="publish-audience"
                 value={draft.audience}
@@ -372,45 +356,45 @@ const PublishEventDialog = ({
                 onChange={(audience) => form.setFieldValue('audience', audience)}
               />
               {showErrors && (form.errors as Record<string, string>).audience && (
-                <p className="text-xs [color:var(--ds-color-danger-text)]">
+                <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">
                   {(form.errors as Record<string, string>).audience}
                 </p>
               )}
-            </Section>
+            </>
           )}
 
-          {/* Details and Repeat were set on the first step; asking again would be asking twice. */}
-          <Section title="Extras">
+          {/* Details and Repeat were set on the first step. */}
           {!isReminder && (
             <ImageField value={draft.imageUrl} onChange={(imageUrl) => form.setFieldValue('imageUrl', imageUrl)} />
           )}
 
           {!isReminder && onStepTwo && (
-            <div className="space-y-1.5">
-              <Label className="block">Linked Job (optional)</Label>
+            <div className="min-w-0 space-y-1.5">
+              <Label className="block">Linked Job</Label>
 
               {draft.linkedJob ? (
-                <div className="flex items-start justify-between gap-2 rounded-md border px-3 py-2">
-                  <div className="flex gap-2">
+                <div className="flex min-w-0 items-start justify-between gap-2 rounded-md border px-3 py-2">
+                  <div className="flex min-w-0 flex-1 gap-2">
                     <Link2 className="mt-0.5 size-3.5 shrink-0 [color:var(--ds-color-text-secondary)]" />
-                    <div>
+                    {/* A job title can be long; it wraps inside the half-width column instead of pushing out of it. */}
+                    <div className="min-w-0 flex-1">
                       {draft.linkedJob.kind === 'campus' ? (
                         <Button
                           type="button"
                           variant="link"
-                          className="h-auto justify-start p-0 text-sm"
+                          className="h-auto justify-start whitespace-normal break-words p-0 text-left text-sm"
                           onClick={onOpenJob}
                         >
                           {draft.linkedJob.campusJob}
                         </Button>
                       ) : (
-                        <Button asChild variant="link" className="h-auto justify-start p-0 text-sm">
+                        <Button asChild variant="link" className="h-auto justify-start whitespace-normal break-words p-0 text-left text-sm">
                           <a href={draft.linkedJob.url} target="_blank" rel="noreferrer">
                             {draft.linkedJob.title}
                           </a>
                         </Button>
                       )}
-                      <p className="text-sm [color:var(--ds-color-text-secondary)]">
+                      <p className="truncate text-sm [color:var(--ds-color-text-secondary)]">
                         {draft.linkedJob.kind === 'campus' ? 'Campus job' : draft.linkedJob.url}
                       </p>
                     </div>
@@ -420,6 +404,7 @@ const PublishEventDialog = ({
                     variant="ghost"
                     size="sm"
                     iconOnly
+                    className="shrink-0"
                     aria-label="Remove linked job"
                     onClick={() => form.setFieldValue('linkedJob', null)}
                   >
@@ -440,7 +425,7 @@ const PublishEventDialog = ({
 
             </div>
           )}
-          </Section>
+          </div>
 
           <LinkJobDialog
             open={linking}
@@ -483,7 +468,7 @@ const PublishEventDialog = ({
               ? ''
               : count > 0
                 ? `${count} students will be notified`
-                : 'No audience yet — you can choose it later'}
+                : 'No audience selected yet'}
           </span>
           )}
 

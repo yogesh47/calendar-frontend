@@ -292,15 +292,15 @@ const CalendarEntryDialog = ({
                     onChange={form.handleChange}
                     onBlur={form.handleBlur}
                     className={cn(
-                      'w-full border-0 border-b-2 border-transparent bg-transparent pb-1.5 text-xl font-semibold outline-none transition-colors',
+                      'w-full border-0 border-b-2 bg-transparent pb-1.5 text-xl font-semibold outline-none transition-colors',
                       'placeholder:font-normal placeholder:[color:var(--ds-color-text-tertiary)]',
-                      'hover:[border-color:var(--ds-color-border-default)] focus:[border-color:var(--ds-color-brand)]',
+                      '[border-color:var(--ds-color-border-default)] hover:[border-color:var(--ds-color-border-strong)] focus:[border-color:var(--ds-color-brand)]',
                       errorFor('title') && '[border-color:var(--ds-color-danger)]',
                     )}
                   />
                   {/* The counter only matters near the limit; before that it is noise. */}
                   {(errorFor('title') || draft.title.length > LIMITS.titleLength - 20) && (
-                    <div className="mt-1 flex items-start justify-between gap-2 text-xs">
+                    <div className="mt-1 flex items-start justify-between gap-2 text-xs [&>p]:!mt-0">
                       <FieldError message={errorFor('title')} />
                       <span className="ml-auto shrink-0 [color:var(--ds-color-text-tertiary)]">
                         {draft.title.length}/{LIMITS.titleLength}
@@ -446,7 +446,7 @@ const CalendarEntryDialog = ({
                   {isReminder ? (
                     <Row icon={StickyNote} label="Note">
                       <TiptapEditor
-                        placeholder="Add a note (optional)"
+                        placeholder="Add a note"
                         value={draft.note}
                         maxLength={LIMITS.reminderNoteLength}
                         error={errorFor('note')}
@@ -456,7 +456,7 @@ const CalendarEntryDialog = ({
                   ) : (
                     <Row icon={AlignLeft} label="Description">
                       <TiptapEditor
-                        placeholder="Add a description for students (optional)"
+                        placeholder="Add a description"
                         value={draft.description}
                         maxLength={LIMITS.descriptionLength}
                         error={errorFor('description')}

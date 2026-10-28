@@ -53,8 +53,12 @@ interface EventDetailPanelProps {
   onDelete: () => void
   onDeleteForever: () => void
   onRemindMe?: () => void
-  /** The owner picks — or changes — who the event reaches. */
-  onChooseAudience?: () => void
+  /**
+   * The footer buttons. Gets the panel's own buttons as `defaults` and returns
+   * what to show — the same, more, fewer or reordered. Left out, the defaults
+   * are shown as they are.
+   */
+  renderActions?: (defaults: ReactNode) => ReactNode
 }
 
 // "weekly;2;2026-12-31" → "Every 2 weeks until 31 Dec 2026"
@@ -97,7 +101,7 @@ const EventDetailPanel = ({
   onDelete,
   onDeleteForever,
   onRemindMe,
-  onChooseAudience,
+  renderActions,
 }: EventDetailPanelProps) => {
   if (!event) return null
 
@@ -163,7 +167,7 @@ const EventDetailPanel = ({
     ? CALENDAR_ITEM_STYLE.nudge.label
     : [labelFor(draft.eventType), draft.company].filter(Boolean).join(' · ')
 
-  const footer = isNudge ? (
+  const defaults = isNudge ? (
     draft.linkedId ? (
       <Button variant="outline" onClick={onOpenLinked}>
         {draft.linkedType === 'job_deadline' ? 'View & Apply' : 'Go to the event'}
@@ -196,18 +200,14 @@ const EventDetailPanel = ({
     </>
   ) : isMine && !hasEnded ? (
     <>
-      {onChooseAudience && rules.needsAudience && (
-        <Button variant="outline" onClick={onChooseAudience}>
-          <Users className="size-4" />
-          {hasAudience ? 'Audience' : 'Choose audience'}
-        </Button>
-      )}
       <Button variant="outline" onClick={onCancel}>
         Cancel Event
       </Button>
       <Button onClick={onEdit}>Edit Event</Button>
     </>
   ) : null
+
+  const footer = renderActions ? renderActions(defaults) : defaults
 
   return (
     <>

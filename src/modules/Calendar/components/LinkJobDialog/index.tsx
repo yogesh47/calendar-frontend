@@ -108,7 +108,7 @@ const LinkJobDialog = ({ open, initial, onClose, onLink }: LinkJobDialogProps) =
                 }}
               />
               {errorFor('campusJob') && (
-                <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('campusJob')}</p>
+                <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{errorFor('campusJob')}</p>
               )}
             </div>
           )}

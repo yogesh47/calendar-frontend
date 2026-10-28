@@ -83,7 +83,7 @@ const RepeatField = ({ eventDate, value, error, onChange }: RepeatFieldProps) =>
         )}
       </div>
 
-      {error && <p className="text-xs [color:var(--ds-color-danger-text)]">{error}</p>}
+      {error && <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{error}</p>}
     </div>
   )
 }

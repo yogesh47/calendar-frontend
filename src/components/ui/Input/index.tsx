@@ -107,11 +107,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     };
 
     return (
-      <div className={cn('flex flex-col gap-1 [font-family:var(--ds-font-family-sans)]', className)}>
+      <div className={cn('flex flex-col gap-1.5 [font-family:var(--ds-font-family-sans)]', className)}>
         {label && (
+          // Same type and gap as <Label>, so a text field lines up with the pickers beside it.
           <label
             htmlFor={inputId}
-            className="text-sm font-medium [color:var(--ds-color-text-secondary)]"
+            className="text-sm font-medium leading-none [color:var(--ds-color-text-secondary)]"
           >
             {label}
           </label>
@@ -172,7 +173,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {(hasError || hint || showCount) && (
-          <div className="flex items-start justify-between gap-3">
+          // Sits 4px under the field, on a line no taller than its own text.
+          <div className="-mt-0.5 flex items-start justify-between gap-3 text-xs leading-4">
             <span className="min-w-0 flex-1">
               {hasError ? (
                 <span id={errorId} className="text-xs [color:var(--ds-color-danger-text)]">

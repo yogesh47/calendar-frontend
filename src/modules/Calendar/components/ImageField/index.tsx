@@ -52,7 +52,7 @@ const ImageField = ({ value, onChange }: ImageFieldProps) => {
 
   return (
     <div className="space-y-1.5">
-      <Label>Image (optional)</Label>
+      <Label className="block">Image</Label>
 
       <input
         ref={input}
@@ -64,7 +64,7 @@ const ImageField = ({ value, onChange }: ImageFieldProps) => {
 
       {value ? (
         <div className="relative overflow-hidden rounded-md border">
-          <img src={imageSrc(value)} alt="Event" className="max-h-48 w-full object-cover" />
+          <img src={imageSrc(value)} alt="Event" className="max-h-40 w-full object-cover" />
           <Button
             type="button"
             variant="outline"
@@ -90,7 +90,7 @@ const ImageField = ({ value, onChange }: ImageFieldProps) => {
         </Button>
       )}
 
-      <p className="text-xs [color:var(--ds-color-text-secondary)]">PNG, JPG, GIF or WebP, up to 2 MB.</p>
+      {!value && <p className="text-xs [color:var(--ds-color-text-secondary)]">PNG, JPG, GIF or WebP, up to 2 MB.</p>}
     </div>
   )
 }

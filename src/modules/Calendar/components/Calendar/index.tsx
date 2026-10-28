@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
 import { CalendarDays, Plus } from 'lucide-react'
@@ -14,7 +15,6 @@ import CalendarSidebar from './components/CalendarSidebar'
 import CalendarToolbar from './components/CalendarToolbar'
 import { CalendarError, CalendarSkeleton } from '../CalendarState'
 import ReviewChangesDialog from '../ReviewChangesDialog'
-import AudienceDialog from '../AudienceDialog'
 import SyncDialog from '../SyncDialog'
 import { countAudience, diffAudience } from '../../services/audience'
 import { newDraftOn, newReminderOn } from '../../services/tpoEvents'
@@ -51,6 +51,18 @@ export interface CalendarHandle {
   openEntry: (draft: EventDraft) => void
   /** Dono modal ek saath band karne ke liye. */
   closeEntry: () => void
+  /** Events dobara laao — jab bahar ka koi dialog kuch badal de. */
+  refresh: () => Promise<void>
+}
+
+/** What a host's event buttons get to work with. */
+export interface EventActionContext {
+  /** The panel's own buttons — Edit, Cancel Event, Remind me… — to keep, drop or reorder. */
+  defaults: ReactNode
+  /** Close the detail panel, e.g. before opening the host's own dialog. */
+  close: () => void
+  /** Reload the calendar after the host changed something. */
+  refresh: () => Promise<void>
 }
 
 interface CalendarProps {
@@ -79,6 +91,12 @@ interface CalendarProps {
   showFilter?: boolean
   /** "Delete all". */
   showDeleteAll?: boolean
+  /**
+    Event detail ke neeche ke buttons. Calendar apne buttons `defaults` me deta
+    hai; route unke saath apne jod sakta hai (jaise TPO ka "Audience"), hata
+    sakta hai ya kram badal sakta hai. Na do to sirf calendar ke apne.
+  */
+  eventActions?: (event: TpoEvent, context: EventActionContext) => ReactNode
 }
 
 const Calendar = forwardRef<CalendarHandle, CalendarProps>((
@@ -94,6 +112,7 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
     createLabel,
     showFilter = true,
     showDeleteAll = true,
+    eventActions,
   },
   ref,
 ) => {
@@ -117,8 +136,6 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
   const [deleting, setDeleting] = useState<TpoEvent | null>(null)
   const [purging, setPurging] = useState<TpoEvent | null>(null)
   const [wiping, setWiping] = useState(false)
-  /** The published event whose "Who should see this?" modal is open. */
-  const [audienceFor, setAudienceFor] = useState<TpoEvent | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -392,6 +409,7 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
     save,
     openEntry: (draft: EventDraft) => setDrawer({ open: true, draft, editing: null }),
     closeEntry: () => setDrawer({ open: false, draft: EMPTY_DRAFT, editing: null }),
+    refresh,
   }))
 
   useEffect(() => {
@@ -621,15 +639,6 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
         />
       )}
 
-      <AudienceDialog
-        event={audienceFor}
-        onClose={() => setAudienceFor(null)}
-        onSaved={() => {
-          setAudienceFor(null)
-          refresh()
-        }}
-      />
-
       <SyncDialog open={syncing} onClose={() => setSyncing(false)} />
 
       <CalendarDialogs
@@ -643,10 +652,11 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
         totalCount={events.length}
         onOpenJobs={() => navigate(`/${role}/jobs`)}
         onOpenEvent={setOpenedId}
-        onChooseAudience={(event) => {
-          setOpenedId(null)
-          setAudienceFor(event)
-        }}
+        renderActions={
+          eventActions
+            ? (event, defaults) => eventActions(event, { defaults, close: () => setOpenedId(null), refresh })
+            : undefined
+        }
         onEdit={openEdit}
         onRemindMe={remindMe}
         onMoveReminder={moveReminder}

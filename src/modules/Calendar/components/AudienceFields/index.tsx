@@ -35,7 +35,7 @@ const AudienceFields = ({ value, showErrors, onChange, idPrefix = 'audience' }: 
     showErrors && !value[field].length ? `Select at least one ${field.slice(0, -1)}.` : undefined
 
   const error = (field: AudienceList) =>
-    errorFor(field) && <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor(field)}</p>
+    errorFor(field) && <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{errorFor(field)}</p>
 
   return (
     <>
@@ -59,7 +59,9 @@ const AudienceFields = ({ value, showErrors, onChange, idPrefix = 'audience' }: 
         </RadioGroup>
       </div>
 
-      <div className="space-y-1.5">
+      {/* Course and batch are short lists — side by side, so the form is not one long column. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="min-w-0 space-y-1.5">
         <Label>
           Course <Required />
         </Label>
@@ -72,7 +74,7 @@ const AudienceFields = ({ value, showErrors, onChange, idPrefix = 'audience' }: 
         {error('courses')}
       </div>
 
-      <div className="space-y-1.5">
+      <div className="min-w-0 space-y-1.5">
         <Label>
           Batch <Required />
         </Label>
@@ -83,6 +85,7 @@ const AudienceFields = ({ value, showErrors, onChange, idPrefix = 'audience' }: 
           onChange={(batches) => onChange({ ...value, batches: batches.map(Number) })}
         />
         {error('batches')}
+      </div>
       </div>
 
       <div className="space-y-1.5">

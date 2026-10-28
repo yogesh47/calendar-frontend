@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import type { ReactNode } from 'react'
 import EventDetailPanel from '../../../EventDetailPanel'
 import CancelDialog from '../../../CancelDialog'
 import ConfirmDialog from '../../../ConfirmDialog'
@@ -16,7 +17,8 @@ interface CalendarDialogsProps {
   totalCount: number
   onOpenJobs: () => void
   onOpenEvent: (eventId: string | null) => void
-  onChooseAudience: (event: TpoEvent) => void
+  /** The host's footer buttons for the opened event, given the panel's own. */
+  renderActions?: (event: TpoEvent, defaults: ReactNode) => ReactNode
   onEdit: (event: TpoEvent) => void
   onRemindMe: (event: TpoEvent) => void
   onMoveReminder: (reminder: TpoEvent) => void
@@ -46,7 +48,7 @@ const CalendarDialogs = ({
   totalCount,
   onOpenJobs,
   onOpenEvent,
-  onChooseAudience,
+  renderActions,
   onEdit,
   onRemindMe,
   onMoveReminder,
@@ -87,7 +89,7 @@ const CalendarDialogs = ({
         onOpenEvent(draft.linkedId)
       }}
       onClose={() => onOpenEvent(null)}
-      onChooseAudience={isTpo && opened ? () => onChooseAudience(opened) : undefined}
+      renderActions={opened && renderActions ? (defaults) => renderActions(opened, defaults) : undefined}
       onEdit={() => opened && onEdit(opened)}
       onCancel={() => onAskCancel(opened)}
       onDelete={() => onAskDelete(opened)}

@@ -165,7 +165,7 @@ const EventAudiencePage = ({ role = 'tpo' }: EventAudiencePageProps) => {
                 onChange={(courses) => set('audience.courses', courses)}
               />
               {audienceError('courses') && (
-                <p className="text-xs [color:var(--ds-color-danger-text)]">{audienceError('courses')}</p>
+                <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{audienceError('courses')}</p>
               )}
             </div>
 
@@ -180,7 +180,7 @@ const EventAudiencePage = ({ role = 'tpo' }: EventAudiencePageProps) => {
                 onChange={(batches) => set('audience.batches', batches.map(Number))}
               />
               {audienceError('batches') && (
-                <p className="text-xs [color:var(--ds-color-danger-text)]">{audienceError('batches')}</p>
+                <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{audienceError('batches')}</p>
               )}
             </div>
 
@@ -196,7 +196,7 @@ const EventAudiencePage = ({ role = 'tpo' }: EventAudiencePageProps) => {
                 onChange={(departments) => set('audience.departments', departments)}
               />
               {audienceError('departments') && (
-                <p className="text-xs [color:var(--ds-color-danger-text)]">{audienceError('departments')}</p>
+                <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{audienceError('departments')}</p>
               )}
             </div>
 

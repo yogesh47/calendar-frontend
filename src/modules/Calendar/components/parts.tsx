@@ -16,15 +16,18 @@ export const Section = ({
   caption,
   children,
 }: {
-  title: string
+  /** Optional — a card can stand on its fields alone. */
+  title?: string
   caption?: string
   children: React.ReactNode
 }) => (
   <section className="min-w-0 space-y-2.5 rounded-xl border p-3 [background-color:var(--ds-color-bg-surface)]">
-    <div>
-      <h3 className="text-sm font-semibold">{title}</h3>
-      {caption && <p className="text-sm [color:var(--ds-color-text-secondary)]">{caption}</p>}
-    </div>
+    {(title || caption) && (
+      <div>
+        {title && <h3 className="text-sm font-semibold">{title}</h3>}
+        {caption && <p className="text-sm [color:var(--ds-color-text-secondary)]">{caption}</p>}
+      </div>
+    )}
     {children}
   </section>
 )
@@ -47,4 +50,4 @@ export const Row = ({ icon: Icon, label, children }: { icon: LucideIcon; label: 
 )
 
 export const FieldError = ({ message }: { message?: string }) =>
-  message ? <p className="text-xs [color:var(--ds-color-danger-text)]">{message}</p> : null
+  message ? <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{message}</p> : null
