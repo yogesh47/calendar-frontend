@@ -1,9 +1,7 @@
 import { format } from 'date-fns'
-import { Label } from '@/components/ui/Label'
 import { Combobox } from '@/components/ui/MultiSelect'
 import DatePicker from '@/components/custom/DatePicker'
 import { addDaysTo } from '../TimeSelect'
-import { REPEAT_OPTIONS } from '../../constants/tpo'
 import type { Recurrence, RepeatFrequency } from '../../types/tpo'
 
 interface RepeatFieldProps {
@@ -16,62 +14,62 @@ interface RepeatFieldProps {
 // The first "until" offered: a month of weekly sessions is the common case.
 const DEFAULT_SPAN_DAYS = 28
 
+/*
+  How often, as one choice. "Weekly" beside "Every week" said the same thing
+  twice; the presets cover what a campus actually schedules, and the backend
+  still takes any interval.
+*/
+const PRESETS: { value: string; label: string; freq: RepeatFrequency | null; interval: number }[] = [
+  { value: 'none', label: 'Does not repeat', freq: null, interval: 1 },
+  { value: 'daily', label: 'Every day', freq: 'daily', interval: 1 },
+  { value: 'weekly', label: 'Every week', freq: 'weekly', interval: 1 },
+  { value: 'biweekly', label: 'Every 2 weeks', freq: 'weekly', interval: 2 },
+  { value: 'monthly', label: 'Every month', freq: 'monthly', interval: 1 },
+]
+
+const presetOf = (value: Recurrence | null): string =>
+  PRESETS.find((preset) => preset.freq === (value?.freq ?? null) && preset.interval === (value?.interval ?? 1))
+    ?.value ?? 'none'
+
 /**
- * "Does not repeat", or how often and until when. Every occurrence becomes its
- * own event on publish, so each one can still be moved or cancelled alone.
+ * "Does not repeat", or how often and until when — one line beside the row's
+ * icon. Every occurrence becomes its own event on publish, so each one can
+ * still be moved or cancelled alone.
  */
 const RepeatField = ({ eventDate, value, error, onChange }: RepeatFieldProps) => {
-  const unit = REPEAT_OPTIONS.find((option) => option.value === value?.freq)?.unit ?? ''
   const lastAllowed = eventDate
     ? format(new Date(new Date(`${eventDate}T00:00:00`).setFullYear(Number(eventDate.slice(0, 4)) + 1)), 'yyyy-MM-dd')
     : undefined
 
-  const pick = (freq: string) =>
+  const pick = (key: string) => {
+    const preset = PRESETS.find((entry) => entry.value === key)
     onChange(
-      freq === 'none'
-        ? null
-        : {
-            freq: freq as RepeatFrequency,
-            interval: value?.interval ?? 1,
+      preset?.freq
+        ? {
+            freq: preset.freq,
+            interval: preset.interval,
             until: value?.until || addDaysTo(eventDate, DEFAULT_SPAN_DAYS),
-          },
+          }
+        : null,
     )
+  }
 
-  // "Every month", "Every 2 months" — one control instead of a number and a loose word.
-  const intervalOptions = [1, 2, 3, 4].map((step) => ({
-    value: String(step),
-    label: step === 1 ? `Every ${unit}` : `Every ${step} ${unit}s`,
-  }))
-
-  // Laid out like the date/time row above it: three equal columns when it
-  // repeats, the picker alone across the row when it does not.
   return (
-    <div className="space-y-1.5">
-      <div className={value ? 'grid grid-cols-2 gap-2.5 sm:grid-cols-3' : 'grid grid-cols-1'}>
-        <div className={value ? 'col-span-2 space-y-1.5 sm:col-span-1' : 'space-y-1.5'}>
-          <Label>Repeat</Label>
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="w-full sm:w-44">
           <Combobox
             searchable={false}
-            value={value?.freq ?? 'none'}
-            options={REPEAT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+            value={presetOf(value)}
+            options={PRESETS.map((preset) => ({ value: preset.value, label: preset.label }))}
             onChange={pick}
           />
         </div>
 
         {value && (
           <>
-            <div className="space-y-1.5">
-              <Label>Every</Label>
-              <Combobox
-                searchable={false}
-                value={String(value.interval)}
-                options={intervalOptions}
-                onChange={(step) => onChange({ ...value, interval: Number(step) })}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Until</Label>
+            <span className="text-sm [color:var(--ds-color-text-secondary)]">until</span>
+            <div className="min-w-0 flex-1 sm:w-44 sm:flex-none">
               <DatePicker
                 className="w-full"
                 value={value.until}

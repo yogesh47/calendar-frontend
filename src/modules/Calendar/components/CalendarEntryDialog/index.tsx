@@ -1,10 +1,8 @@
 import { useEffect } from 'react'
 import { format } from 'date-fns'
-import { CalendarPlus, Info, Lock, Trash2, TriangleAlert, Wand2 } from 'lucide-react'
+import { AlignLeft, Bell, CalendarPlus, Clock, Info, Lock, Repeat, StickyNote, Tag, Trash2, TriangleAlert, Wand2 } from 'lucide-react'
 import { useFormik, validateYupSchema, yupToFormErrors } from 'formik'
 import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/Label'
 import { Button } from '@/components/ui/Button'
 import TiptapEditor from '@/components/custom/TiptapEditor'
 import { DatePicker } from '@/components/custom/DatePicker'
@@ -26,6 +24,7 @@ import { rulesFor } from '../../helpers/tpo'
 import { countAudience } from '../../services/audience'
 import { eventSchema, recurrenceError } from '../../services/eventSchema'
 import RepeatField from '../RepeatField'
+import { FieldError, Row } from '../parts'
 import {
   EVENT_TYPE_OPTIONS,
   DEFAULT_REMIND_BEFORE,
@@ -59,18 +58,6 @@ const InfoNote = ({ icon, children }: { icon?: React.ReactNode; children: React.
     <span>{children}</span>
   </p>
 )
-
-const Section = ({ title, caption, children }: { title: string; caption?: string; children: React.ReactNode }) => (
-  <section className="space-y-2.5 rounded-xl border p-3 [background-color:var(--ds-color-bg-surface)]">
-    <div>
-      <h3 className="text-sm font-semibold">{title}</h3>
-      {caption && <p className="text-sm [color:var(--ds-color-text-secondary)]">{caption}</p>}
-    </div>
-    {children}
-  </section>
-)
-
-const Required = () => <span className="[color:var(--ds-color-danger)]">*</span>
 
 const clock = (value: string): string =>
   value ? format(new Date(`2000-01-01T${value}:00`), 'h:mm a') : ''
@@ -292,14 +279,40 @@ const CalendarEntryDialog = ({
                 showPreview && 'lg:grid-cols-[1fr_24rem]',
               )}
             >
-              <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
-                <Section title={isReminder ? 'Reminder' : 'Event basics'}>
+              <div className="min-h-0 min-w-0 overflow-y-auto rounded-xl border [background-color:var(--ds-color-bg-surface)]">
+                {/* The title is the event's name, so it leads — large and unboxed, as in a calendar app. */}
+                <div className="px-4 pb-3 pt-4">
+                  <input
+                    name="title"
+                    aria-label="Title"
+                    autoComplete="off"
+                    placeholder={isReminder ? 'Add a reminder title' : 'Add title'}
+                    maxLength={LIMITS.titleLength}
+                    value={draft.title}
+                    onChange={form.handleChange}
+                    onBlur={form.handleBlur}
+                    className={cn(
+                      'w-full border-0 border-b-2 border-transparent bg-transparent pb-1.5 text-xl font-semibold outline-none transition-colors',
+                      'placeholder:font-normal placeholder:[color:var(--ds-color-text-tertiary)]',
+                      'hover:[border-color:var(--ds-color-border-default)] focus:[border-color:var(--ds-color-brand)]',
+                      errorFor('title') && '[border-color:var(--ds-color-danger)]',
+                    )}
+                  />
+                  {/* The counter only matters near the limit; before that it is noise. */}
+                  {(errorFor('title') || draft.title.length > LIMITS.titleLength - 20) && (
+                    <div className="mt-1 flex items-start justify-between gap-2 text-xs">
+                      <FieldError message={errorFor('title')} />
+                      <span className="ml-auto shrink-0 [color:var(--ds-color-text-tertiary)]">
+                        {draft.title.length}/{LIMITS.titleLength}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
+                {/* No rule between rows — the icons and the spacing already separate them. */}
+                <div className="pb-2">
                   {!reminderOnly && (
-                    <div className="space-y-1.5">
-                      <Label>
-                        Event Type <Required />
-                      </Label>
+                    <Row icon={Tag} label="Event type">
                       <Combobox
                         searchable={false}
                         disabled={isEdit}
@@ -308,118 +321,73 @@ const CalendarEntryDialog = ({
                         options={EVENT_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
                         onChange={(value) => pickType(value as TpoEventType)}
                       />
-                    </div>
+                      {isReminder && (
+                        <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
+                      )}
+                    </Row>
                   )}
 
-                  {isReminder && !reminderOnly && (
-                    <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
-                  )}
+                  {/*
+                    The date and both times read as one sentence — "Wed 28 Oct,
+                    12:00 PM – 1:00 PM" — because they are one fact.
+                  */}
+                  <Row icon={Clock} label="Date and time">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-full sm:w-44">
+                        <DatePicker
+                          id="eventDate"
+                          className="w-full"
+                          aria-label={isReminder ? 'Date' : 'Start date'}
+                          showMonthPicker
+                          showYearPicker
+                          yearRange={{ from: new Date().getFullYear() - 1, to: new Date().getFullYear() + 5 }}
+                          value={draft.eventDate}
+                          hasError={Boolean(errorFor('eventDate'))}
+                          onChange={setStartDate}
+                        />
+                      </div>
 
-                  <Input
-                    label={
-                      <>
-                        Title <span className="[color:var(--ds-color-danger)]">*</span>
-                      </>
-                    }
-                    name="title"
-                    placeholder="Enter a short reminder title"
-                    showCount
-                    maxLength={LIMITS.titleLength}
-                    value={draft.title}
-                    error={errorFor('title')}
-                    onChange={form.handleChange}
-                    onBlur={form.handleBlur}
-                  />
+                      <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
+                        <TimeSelect
+                          value={draft.startTime}
+                          onChange={(value) => {
+                            form.setFieldValue('startTime', value)
+                            if (!rules.needsTime) return
+                            /*
+                              Shuruaat hat gayi to ant ka koi matlab nahi bachta —
+                              wo bhi hat jaata hai. Warna end time ek aise waqt se
+                              bandha reh jaata jo ab kahin likha hi nahi.
+                            */
+                            if (!value) {
+                              form.setFieldValue('endTime', '')
+                              return
+                            }
+                            // Ant shuruaat se pehle na reh jaye — ek ghanta aage kar do.
+                            if (!draft.endTime || draft.endTime <= value) {
+                              form.setFieldValue('endTime', plusHour(value))
+                            }
+                          }}
+                        />
+                      </div>
 
-                  {/* Start date, start time aur end time — ek hi pankti me, kyunki wo ek hi baat ke teen hisse hain. */}
-                  <div
-                    className={
-                      rules.needsTime
-                        ? 'grid grid-cols-2 gap-2.5 sm:grid-cols-3'
-                        : 'grid grid-cols-1 gap-2.5 sm:grid-cols-2'
-                    }
-                  >
-                    <div className={rules.needsTime ? 'col-span-2 space-y-1.5 sm:col-span-1' : 'space-y-1.5'}>
-                      <Label htmlFor="eventDate">
-                        {isReminder ? 'Date' : 'Start date'} <Required />
-                      </Label>
-                      <DatePicker
-                        id="eventDate"
-                        className="w-full"
-                        showMonthPicker
-                        showYearPicker
-                        yearRange={{ from: new Date().getFullYear() - 1, to: new Date().getFullYear() + 5 }}
-                        value={draft.eventDate}
-                        hasError={Boolean(errorFor('eventDate'))}
-                        onChange={setStartDate}
-                      />
-                      {errorFor('eventDate') && (
-                        <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('eventDate')}</p>
+                      {rules.needsTime && (
+                        <>
+                          <span aria-hidden className="[color:var(--ds-color-text-secondary)]">–</span>
+                          <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
+                            <TimeSelect
+                              value={draft.endTime}
+                              after={draft.startTime}
+                              onChange={(value) => set('endTime', value)}
+                            />
+                          </div>
+                        </>
                       )}
                     </div>
-
-                    {/*
-                      Reminder ke liye waqt marzi ki baat hai; event ke liye
-                      nahi. Dono waqt yahin saath me poochhe jaate hain —
-                      shuruaat aur ant ek doosre ke bina adhoore hain, unhe do
-                      screen par baantna sirf aage-peeche karne par majboor
-                      karta.
-                    */}
-                    <div className="space-y-1.5">
-                      <Label>
-                        {isReminder ? 'Time (optional)' : <>Start time <Required /></>}
-                      </Label>
-                      <TimeSelect
-                        value={draft.startTime}
-                        onChange={(value) => {
-                          form.setFieldValue('startTime', value)
-                          if (!rules.needsTime) return
-                          /*
-                            Shuruaat hat gayi to ant ka koi matlab nahi bachta —
-                            wo bhi hat jaata hai. Warna end time ek aise waqt se
-                            bandha reh jaata jo ab kahin likha hi nahi.
-                          */
-                          if (!value) {
-                            form.setFieldValue('endTime', '')
-                            return
-                          }
-                          // Ant shuruaat se pehle na reh jaye — ek ghanta aage kar do.
-                          if (!draft.endTime || draft.endTime <= value) {
-                            form.setFieldValue('endTime', plusHour(value))
-                          }
-                        }}
-                      />
-                    </div>
-
-                    {rules.needsTime && (
-                      <div className="space-y-1.5">
-                        <Label>
-                          End time <Required />
-                        </Label>
-                        <TimeSelect
-                          value={draft.endTime}
-                          after={draft.startTime}
-                          onChange={(value) => set('endTime', value)}
-                        />
-                        {errorFor('endTime') && (
-                          <p className="text-xs [color:var(--ds-color-danger-text)]">{errorFor('endTime')}</p>
-                        )}
-                      </div>
+                    {isReminder && !draft.startTime && (
+                      <p className="text-xs [color:var(--ds-color-text-tertiary)]">No time — it stays all day.</p>
                     )}
-                  </div>
-
-                  {(
-                    <div className="space-y-1.5">
-                      <Label>Remind me</Label>
-                      <Combobox
-                        searchable={false}
-                        value={draft.remindBefore}
-                        placeholder="None"
-                        options={REMIND_BEFORE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                        onChange={(value) => set('remindBefore', value)}
-                      />
-                    </div>
-                  )}
+                    <FieldError message={errorFor('eventDate') ?? errorFor('startTime') ?? errorFor('endTime')} />
+                  </Row>
 
                   {/*
                     Repeat sits with the date it repeats from. Only a new event
@@ -427,62 +395,76 @@ const CalendarEntryDialog = ({
                     is edited on its own.
                   */}
                   {!isEdit && !isReminder && !reminderOnly && (
-                    <RepeatField
-                      eventDate={draft.eventDate}
-                      value={draft.recurrence}
-                      error={errorFor('recurrence')}
-                      onChange={(value) => {
-                        form.setFieldTouched('recurrence', true, false)
-                        form.setFieldValue('recurrence', value)
-                      }}
-                    />
+                    <Row icon={Repeat} label="Repeat">
+                      <RepeatField
+                        eventDate={draft.eventDate}
+                        value={draft.recurrence}
+                        error={errorFor('recurrence')}
+                        onChange={(value) => {
+                          form.setFieldTouched('recurrence', true, false)
+                          form.setFieldValue('recurrence', value)
+                        }}
+                      />
+                    </Row>
                   )}
 
-
+                  <Row icon={Bell} label="Remind me">
+                    <div className="sm:w-44">
+                      <Combobox
+                        searchable={false}
+                        value={draft.remindBefore}
+                        valueLabel={draft.remindBefore === 'none' ? 'No reminder' : undefined}
+                        placeholder="No reminder"
+                        options={REMIND_BEFORE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                        onChange={(value) => set('remindBefore', value)}
+                      />
+                    </div>
+                  </Row>
 
                   {clashes.length > 0 && (
-                    <p className="flex gap-2 rounded-lg border px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [border-color:var(--ds-color-warning)] [color:var(--ds-color-warning-text)]">
-                      <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-                      <span>
-                        {clashes.length === 1
-                          ? '1 event clashes with this time'
-                          : `${clashes.length} events clash with this time`}
-                        {': '}
-                        {clashes
-                          .map((entry) => `${entry.title} (${clock(entry.startTime)} – ${clock(entry.endTime)})`)
-                          .join(', ')}
-                      </span>
-                    </p>
+                    <div className="px-4 py-3">
+                      <p className="flex gap-2 rounded-lg border px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [border-color:var(--ds-color-warning)] [color:var(--ds-color-warning-text)]">
+                        <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                        <span>
+                          {clashes.length === 1
+                            ? '1 event clashes with this time'
+                            : `${clashes.length} events clash with this time`}
+                          {': '}
+                          {clashes
+                            .map((entry) => `${entry.title} (${clock(entry.startTime)} – ${clock(entry.endTime)})`)
+                            .join(', ')}
+                        </span>
+                      </p>
+                    </div>
                   )}
 
-                </Section>
-
-                {/*
-                  A reminder keeps a private note; an event has details that the
-                  students read. They were both shown as "Note" here, and an
-                  event's note was never saved — the backend has nowhere for it.
-                */}
-                <Section title={isReminder ? 'Note' : 'Details'}>
+                  {/*
+                    A reminder keeps a private note; an event has details that the
+                    students read. They were both shown as "Note" here, and an
+                    event's note was never saved — the backend has nowhere for it.
+                  */}
                   {isReminder ? (
-                    <TiptapEditor
-                      label="Note (optional)"
-                      value={draft.note}
-                      maxLength={LIMITS.reminderNoteLength}
-                      error={errorFor('note')}
-                      onChange={(html) => form.setFieldValue('note', html)}
-                    />
+                    <Row icon={StickyNote} label="Note">
+                      <TiptapEditor
+                        placeholder="Add a note (optional)"
+                        value={draft.note}
+                        maxLength={LIMITS.reminderNoteLength}
+                        error={errorFor('note')}
+                        onChange={(html) => form.setFieldValue('note', html)}
+                      />
+                    </Row>
                   ) : (
-                    <TiptapEditor
-                      label="Description (optional)"
-                      value={draft.description}
-                      maxLength={LIMITS.descriptionLength}
-                      error={errorFor('description')}
-                      onChange={(html) => form.setFieldValue('description', html)}
-                    />
+                    <Row icon={AlignLeft} label="Description">
+                      <TiptapEditor
+                        placeholder="Add a description for students (optional)"
+                        value={draft.description}
+                        maxLength={LIMITS.descriptionLength}
+                        error={errorFor('description')}
+                        onChange={(html) => form.setFieldValue('description', html)}
+                      />
+                    </Row>
                   )}
-
-                </Section>
-
+                </div>
               </div>
 
               {showPreview && (
