@@ -2,9 +2,9 @@ import { Label } from '@/components/ui/Label'
 import { MultiSelect } from '@/components/ui/MultiSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup'
 import { Required } from '../parts'
-import { batchesFor } from '../../services/audience'
-import { BATCH_OPTIONS, COURSE_OPTIONS, DEPARTMENT_OPTIONS, OPPORTUNITY_OPTIONS } from '../../constants/tpo'
-import type { Audience, OpportunityType } from '../../types/tpo'
+import { batchesFor } from './AudienceFields.helpers'
+import { BATCH_OPTIONS, COURSE_OPTIONS, DEPARTMENT_OPTIONS, OPPORTUNITY_OPTIONS } from '@/modules/Calendar/constants/tpo'
+import type { Audience, OpportunityType } from '@/modules/Calendar/types/tpo'
 
 type AudienceList = 'courses' | 'batches' | 'departments'
 

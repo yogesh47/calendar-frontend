@@ -4,12 +4,12 @@ import { Briefcase, CalendarDays, ExternalLink, LayoutDashboard, Menu, PanelLeft
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { TooltipProvider } from '@/components/ui/TooltipProvider'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/Drawer'
-import AccountMenu from '../AccountMenu'
-import RemindersPopup from '../RemindersPopup'
-import NotificationBell from '../NotificationBell'
+import AccountMenu from './components/AccountMenu'
+import RemindersPopup from './components/RemindersPopup'
+import NotificationBell from './components/NotificationBell'
 import { cn } from '@/lib/utils'
 import { fetchUnreadCount, openCalendarStream } from '@/modules/Calendar/services/api'
-import { onWindowFocus } from '@/modules/Calendar/services/store'
+import { onWindowFocus } from '@/modules/Calendar/services/live'
 import type { ReactNode } from 'react'
 import type { AuthUser, Role } from '@/modules/Auth/types'
 
@@ -175,7 +175,7 @@ const AppShell = ({ role, user, children, onSignOut }: AppShellProps) => {
             </span>
 
             <span className="flex items-center gap-3">
-              {role !== 'super_admin' && <NotificationBell />}
+              {role !== 'super_admin' && <NotificationBell role={role} />}
               <AccountMenu user={user} onSignOut={onSignOut} />
             </span>
           </header>

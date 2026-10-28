@@ -6,6 +6,8 @@ export interface CalendarSettings {
   dailyNudgeLimit: number
   quietHoursStart: string
   quietHoursEnd: string
+  /** The college's campus time, e.g. "Asia/Kolkata". */
+  timeZone: string
   updatedAt?: string
 }
 

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { Button } from '@/components/ui/Button'
-import { styleOf } from '@/modules/Calendar/helpers'
-import { itemFromEvent } from '@/modules/Calendar/helpers/tpo'
+import { itemFromEvent, styleOf } from '@/calendar'
+import { TPO_EVENT_TYPES } from '@/modules/Calendar/constants/tpo'
 import { fetchComingUp, openCalendarStream } from '@/modules/Calendar/services/api'
-import { onWindowFocus, requestOpenEvent } from '@/modules/Calendar/services/store'
-import { COMING_UP_COPY } from '../../constants'
+import { onWindowFocus } from '@/modules/Calendar/services/live'
+import { requestOpenEvent } from '@/calendar'
+import { COMING_UP_COPY } from './ComingUp.constants'
 import type { Role } from '@/modules/Auth/types'
 import type { TpoEvent } from '@/modules/Calendar/types/tpo'
 
@@ -60,7 +61,7 @@ const ComingUp = ({ role }: { role: Role }) => {
       ) : (
         <ul className="flex flex-col gap-2">
           {items.map((event) => {
-            const style = styleOf(itemFromEvent(event))
+            const style = styleOf(itemFromEvent(event, TPO_EVENT_TYPES))
             const clock = event.draft.startTime
               ? format(new Date(`2000-01-01T${event.draft.startTime}:00`), 'h:mm a')
               : 'All day'

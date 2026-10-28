@@ -1,11 +1,11 @@
+import { addDays, format } from 'date-fns'
 import { useEffect, useState } from 'react'
 import { CalendarPlus, Link2, Lock, Trash2, TriangleAlert, Wand2, X } from 'lucide-react'
-import { useFormik, validateYupSchema, yupToFormErrors } from 'formik'
+import { useFormik } from 'formik'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Button } from '@/components/ui/Button'
-import { addDaysTo, dayShift } from '../TimeSelect'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { Combobox } from '@/components/ui/MultiSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup'
@@ -17,30 +17,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog'
-import DayPreview from '../DayPreview'
-import LinkJobDialog from '../LinkJobDialog'
-import { LIMITS } from '../../constants'
-import { overlaps } from '../../helpers/conflicts'
+import LinkJobDialog from './components/LinkJobDialog'
+import { overlaps } from '@/calendar'
 import { labelFor, rulesFor } from '../../helpers/tpo'
-import { eventSchema } from '../../services/eventSchema'
-import ImageField from '../ImageField'
+import ImageField from './components/ImageField'
 import AudienceFields, { audienceIsComplete, audienceIsEmpty } from '../AudienceFields'
 import { countAudience } from '../../services/audience'
-import {
-  COMPANY_OPTIONS,
-  FINAL_YEAR_BATCH,
-  MODE_OPTIONS,
-  REMINDER_PRIVACY,
-} from '../../constants/tpo'
+import { FINAL_YEAR_BATCH, REMINDER_PRIVACY, VENUE_LENGTH } from '../../constants/tpo'
+import { COMPANY_OPTIONS } from '../../constants'
+import { MODE_OPTIONS } from './PublishEventDialog.constants'
 import { InfoNote, Required, clock } from '../parts'
-import type { DayEntry } from '../DayPreview'
-import type { EventDraft, EventMode, LinkedJob } from '../../types/tpo'
+import type { DayEntry } from '@/calendar'
+import type { TpoDraft, EventMode, LinkedJob } from '../../types/tpo'
 
 interface PublishEventDialogProps {
   open: boolean
   notifyMinor?: boolean
   onNotifyMinorChange?: (value: boolean) => void
-  initial: EventDraft
+  initial: TpoDraft
   isEdit: boolean
   reminderOnly?: boolean
   canCancelEvent?: boolean
@@ -50,7 +44,7 @@ interface PublishEventDialogProps {
   onOpenJob?: () => void
   onCancelEvent?: () => void
   onDeleteReminder?: () => void
-  onSave: (draft: EventDraft) => void
+  onSave: (draft: TpoDraft) => void
   onBack: () => void
 }
 
@@ -73,19 +67,23 @@ const PublishEventDialog = ({
 }: PublishEventDialogProps) => {
   const [linking, setLinking] = useState(false)
 
-  const form = useFormik<EventDraft>({
+  const form = useFormik<TpoDraft>({
     initialValues: initial,
     enableReinitialize: true,
     validateOnChange: true,
     validateOnBlur: true,
     validate: (values) => {
-      try {
-        validateYupSchema(values, eventSchema, true, { eventType: values.eventType, studentReminder: reminderOnly })
-      } catch (error) {
-        return yupToFormErrors(error)
-      }
-
+      // Title, date and time were checked on the calendar's own step; this one checks what it asks.
       const errors: Record<string, string> = {}
+      const rules = rulesFor(values.eventType)
+
+      if (rules.needsMode) {
+        if (!values.mode) errors.mode = 'Select a mode.'
+        else if (values.mode === 'offline' && !values.venue.trim()) errors.venue = 'Venue is required.'
+        else if (values.mode === 'online' && !values.onlinePlatform.trim()) {
+          errors.onlinePlatform = 'Online platform is required.'
+        }
+      }
 
       /*
         Who sees it can be picked right here, or left empty and picked later from
@@ -99,8 +97,8 @@ const PublishEventDialog = ({
 
       return errors
     },
-    // Ek hi din ka event — end date alag se nahi poocha jaata, wahi din jaata hai.
-    onSubmit: (values) => onSave({ ...values, endDate: values.eventDate }),
+    // End date pehle modal se aati hai — raat 11 baje shuru hua event agle din khatam ho sakta hai.
+    onSubmit: (values) => onSave({ ...values, endDate: values.endDate || values.eventDate }),
   })
 
   const draft = form.values
@@ -119,10 +117,6 @@ const PublishEventDialog = ({
   */
   // Yahan har cheez event ki hai — koi step nahi, koi reminder shakl nahi.
   const onStepTwo = true
-  // The day panel on the right stays for everyone — student reminder and TPO
-  // event, first step and second. A date is all it needs.
-  // Day panel calendar ke modal me hai; yahan dobara nahi.
-  const showPreview = false
 
   useEffect(() => {
     if (!open) setLinking(false)
@@ -159,7 +153,11 @@ const PublishEventDialog = ({
     form.setValues({
       ...draft,
       company: rules.needsCompany ? COMPANY_OPTIONS[0] : draft.company,
-      endDate: draft.endDate || draft.eventDate,
+      // 90 minutes from a late start ends tomorrow.
+      endDate:
+        rules.needsTime && draft.eventDate && end.getDate() !== start.getDate()
+          ? format(addDays(new Date(`${draft.eventDate}T00:00:00`), 1), 'yyyy-MM-dd')
+          : draft.endDate || draft.eventDate,
       endTime: rules.needsTime ? clock(end) : draft.endTime,
       mode: rules.needsMode ? 'offline' : draft.mode,
       venue: rules.needsMode ? 'Auditorium, Block A' : draft.venue,
@@ -183,12 +181,6 @@ const PublishEventDialog = ({
           overlaps(draft.startTime, draft.endTime, entry.startTime, entry.endTime),
       )
     : []
-
-  const setStartDate = (value: string) => {
-    const shift = dayShift(draft.eventDate, draft.endDate)
-    set('eventDate', value)
-    set('endDate', addDaysTo(value, shift))
-  }
 
   const close = () => onClose()
 
@@ -245,7 +237,6 @@ const PublishEventDialog = ({
         <div
           className={cn(
             'grid min-w-0 grid-cols-[minmax(0,1fr)] max-h-[70vh] gap-3 overflow-hidden px-3 pb-4 pt-3 [background-color:var(--ds-color-bg-app)] sm:px-4',
-            showPreview && 'lg:grid-cols-[1fr_24rem]',
           )}
         >
           <div className="min-h-0 min-w-0 space-y-3 overflow-y-auto overflow-x-hidden pr-1">
@@ -320,7 +311,7 @@ const PublishEventDialog = ({
                       Venue <span className="[color:var(--ds-color-danger)]">*</span>
                     </>
                   }
-                  maxLength={LIMITS.venueLength}
+                  maxLength={VENUE_LENGTH}
                   value={draft.venue}
                   error={errorFor('venue')}
                   onChange={form.handleChange}
@@ -438,22 +429,6 @@ const PublishEventDialog = ({
           />
           </div>
 
-          {showPreview && (
-            <div className="hidden min-h-0 lg:block lg:h-full">
-              <DayPreview
-                date={draft.eventDate}
-                startTime={draft.startTime}
-                endTime={draft.endTime}
-                title={draft.title}
-                entries={dayEntries}
-                onDateChange={setStartDate}
-                onTimeChange={(start, end) => {
-                  form.setFieldValue('startTime', start)
-                  form.setFieldValue('endTime', end)
-                }}
-              />
-            </div>
-          )}
         </div>
 
         <DialogFooter className="min-w-0 flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">

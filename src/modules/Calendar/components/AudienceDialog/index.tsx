@@ -13,10 +13,10 @@ import {
 import { messageOf, showError, showSuccess } from '@/lib/toast'
 import { Section } from '../parts'
 import AudienceFields, { audienceIsComplete } from '../AudienceFields'
-import { setEventAudience } from '../../services/api'
+import { setEventAudience } from '@/modules/Calendar/services/api'
 import { countAudience } from '../../services/audience'
-import { EMPTY_AUDIENCE, FINAL_YEAR_BATCH } from '../../constants/tpo'
-import type { Audience, TpoEvent } from '../../types/tpo'
+import { EMPTY_AUDIENCE, FINAL_YEAR_BATCH } from '@/modules/Calendar/constants/tpo'
+import type { Audience, TpoEvent } from '@/modules/Calendar/types/tpo'
 
 interface AudienceDialogProps {
   /** The published event; the dialog is open while this is set. */

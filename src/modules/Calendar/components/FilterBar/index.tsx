@@ -1,14 +1,13 @@
 import { ListFilter } from 'lucide-react'
 import { Label } from '@/components/ui/Label'
-import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '../../constants'
-import type { CalendarItemKind } from '../../types'
+import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '@/calendar'
+import type { CalendarItemKind } from '@/calendar'
 import { Button } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { MultiSelect } from '@/components/ui/MultiSelect'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import {
   BATCH_OPTIONS,
-  COMPANY_OPTIONS,
   COURSE_OPTIONS,
   DEPARTMENT_OPTIONS,
   EMPTY_FILTERS,
@@ -20,6 +19,8 @@ import type { CalendarFilters } from '../../types/tpo'
 interface FilterBarProps {
   filters: CalendarFilters
   onChange: (filters: CalendarFilters) => void
+  /** Companies to filter by — the app's list. Empty hides the Company filter. */
+  companies?: string[]
 }
 
 export const activeFilterCount = (filters: CalendarFilters): number =>
@@ -32,7 +33,7 @@ export const activeFilterCount = (filters: CalendarFilters): number =>
   filters.opportunityTypes.length +
   (filters.createdByMe ? 1 : 0)
 
-const FilterBar = ({ filters, onChange }: FilterBarProps) => {
+const FilterBar = ({ filters, onChange, companies = [] }: FilterBarProps) => {
   const active = activeFilterCount(filters)
 
   const field = (label: string, node: React.ReactNode) => (
@@ -100,15 +101,16 @@ const FilterBar = ({ filters, onChange }: FilterBarProps) => {
           />,
         )}
 
-        {field(
-          'Company',
-          <MultiSelect
-            placeholder="Any company"
-            options={COMPANY_OPTIONS.map((company) => ({ value: company, label: company }))}
-            value={filters.companies}
-            onChange={(companies: string[]) => onChange({ ...filters, companies })}
-          />,
-        )}
+        {companies.length > 0 &&
+          field(
+            'Company',
+            <MultiSelect
+              placeholder="Any company"
+              options={companies.map((company) => ({ value: company, label: company }))}
+              value={filters.companies}
+              onChange={(picked: string[]) => onChange({ ...filters, companies: picked })}
+            />,
+          )}
 
         {field(
           'Course',

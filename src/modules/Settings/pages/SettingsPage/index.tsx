@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Spinner } from '@/components/ui/Spinner'
 import { messageOf, showError, showSuccess } from '@/lib/toast'
-import TimeSelect from '@/modules/Calendar/components/TimeSelect'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
+import { allZones, zoneLabel } from '@/lib/timeZone'
+import { TimeSelect } from '@/calendar'
 import { fetchSettings, saveSettings } from '../../services/api'
-import { DEFAULT_SETTINGS, NUMBER_FIELDS, SETTINGS_COPY } from '../../constants'
+import { DEFAULT_SETTINGS } from './SettingsPage.constants'
+import { NUMBER_FIELDS } from './SettingsPage.constants'
+import { SETTINGS_COPY } from './SettingsPage.constants'
 import type { CalendarSettings, NumberField } from '../../types'
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -22,6 +26,8 @@ const SettingsPage = () => {
   const [errors, setErrors] = useState<Partial<Record<NumberField, string>>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  // The saved zone stays pickable even if this browser doesn't list it.
+  const zones = useMemo(() => [...new Set([settings.timeZone, ...allZones()])].sort(), [settings.timeZone])
 
   useEffect(() => {
     fetchSettings()
@@ -115,6 +121,25 @@ const SettingsPage = () => {
             >
               {settings.deadlineReminderSameDay ? 'On' : 'Off'}
             </Button>
+          </div>
+        </Section>
+
+        <Section title={SETTINGS_COPY.zoneSection}>
+          <div className="space-y-1.5">
+            <Label>Time zone</Label>
+            <Select value={settings.timeZone} onValueChange={(timeZone) => setSettings({ ...settings, timeZone })}>
+              <SelectTrigger className="sm:max-w-[22rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-[18rem]">
+                {zones.map((zone) => (
+                  <SelectItem key={zone} value={zone}>
+                    {`${zone.replace(/_/g, ' ')} (${zoneLabel(new Date(), zone)})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs [color:var(--ds-color-text-secondary)]">{SETTINGS_COPY.zoneHint}</p>
           </div>
         </Section>
 

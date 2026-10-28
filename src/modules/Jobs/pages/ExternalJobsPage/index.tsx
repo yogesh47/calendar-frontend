@@ -1,5 +1,5 @@
 import { ExternalLink } from 'lucide-react'
-import { EXTERNAL_JOBS } from '@/modules/Calendar/services/jobs'
+import { EXTERNAL_JOBS } from '@/modules/Jobs/services/jobs'
 
 const ExternalJobsPage = () => (
   <div className="flex w-full flex-col gap-4 p-3 sm:p-6">

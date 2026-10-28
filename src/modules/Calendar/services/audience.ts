@@ -1,15 +1,8 @@
-import { BATCH_OPTIONS, FINAL_YEAR_BATCH, PRE_FINAL_BATCH } from '../constants/tpo'
-import type { Audience, AudienceDiff, OpportunityType } from '../types/tpo'
+import type { Audience, AudienceDiff } from '@/modules/Calendar/types/tpo'
 
 const groupSize = (course: string, batch: number, department: string): number => {
   const seed = [...`${course}${batch}${department}`].reduce((sum, letter) => sum + letter.charCodeAt(0), 0)
   return 12 + (seed % 48)
-}
-
-export const batchesFor = (opportunityType: OpportunityType): number[] => {
-  if (opportunityType === 'job') return [FINAL_YEAR_BATCH]
-  if (opportunityType === 'internship') return [PRE_FINAL_BATCH, FINAL_YEAR_BATCH]
-  return BATCH_OPTIONS.map((option) => option.year)
 }
 
 export const groupsIn = (audience: Audience): string[] => {

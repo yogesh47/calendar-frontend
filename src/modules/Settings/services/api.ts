@@ -1,5 +1,4 @@
-import { API_BASE_URL } from '@/modules/Auth/constants'
-import { readSession } from '@/modules/Auth/services'
+import axiosInstance from '@/api/axiosInstance'
 import type { CalendarSettings } from '../types'
 
 type ApiSettings = {
@@ -10,33 +9,12 @@ type ApiSettings = {
   daily_nudge_limit: number
   quiet_hours_start: string
   quiet_hours_end: string
+  time_zone: string
   updated_at: string | null
 }
 
-const ask = async <T,>(path: string, init?: RequestInit): Promise<T> => {
-  const session = readSession()
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-  })
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new Error(
-      typeof body?.message === 'string'
-        ? body.message
-        : typeof body?.detail === 'string'
-          ? body.detail
-          : 'Something went wrong. Please try again.',
-    )
-  }
-
-  return (await response.json()) as T
-}
+const ask = async <T,>(path: string, init: { method?: 'GET' | 'PUT'; data?: unknown } = {}): Promise<T> =>
+  (await axiosInstance.request<T>({ url: path, method: init.method ?? 'GET', data: init.data })).data
 
 const toSettings = (entry: ApiSettings): CalendarSettings => ({
   eventReminderDaysBefore: entry.event_reminder_days_before,
@@ -46,6 +24,7 @@ const toSettings = (entry: ApiSettings): CalendarSettings => ({
   dailyNudgeLimit: entry.daily_nudge_limit,
   quietHoursStart: entry.quiet_hours_start,
   quietHoursEnd: entry.quiet_hours_end,
+  timeZone: entry.time_zone,
   updatedAt: entry.updated_at ?? undefined,
 })
 
@@ -57,9 +36,10 @@ const toPayload = (settings: CalendarSettings) => ({
   daily_nudge_limit: settings.dailyNudgeLimit,
   quiet_hours_start: settings.quietHoursStart,
   quiet_hours_end: settings.quietHoursEnd,
+  time_zone: settings.timeZone,
 })
 
 export const fetchSettings = async (): Promise<CalendarSettings> => toSettings(await ask<ApiSettings>('/settings'))
 
 export const saveSettings = async (settings: CalendarSettings): Promise<CalendarSettings> =>
-  toSettings(await ask<ApiSettings>('/settings', { method: 'PUT', body: JSON.stringify(toPayload(settings)) }))
+  toSettings(await ask<ApiSettings>('/settings', { method: 'PUT', data: toPayload(settings) }))

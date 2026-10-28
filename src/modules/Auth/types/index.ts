@@ -6,6 +6,10 @@ export interface AuthUser {
   name: string
   email: string
   role: Role
+  /** Where the user is, as their browser last said. */
+  time_zone?: string | null
+  /** Their college's campus time. */
+  org_time_zone?: string
 }
 
 export interface LoginResponse {

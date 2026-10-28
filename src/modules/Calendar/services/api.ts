@@ -1,8 +1,11 @@
 import { API_BASE_URL } from '@/modules/Auth/constants'
-import { readSession, signOutOnExpiry } from '@/modules/Auth/services'
-import { ApiError, OFFLINE_MESSAGE } from '@/lib/apiError'
-import { EMPTY_DRAFT } from '../constants/tpo'
-import type { Audience, EventDraft, TpoEvent } from '../types/tpo'
+import { readSession } from '@/modules/Auth/services'
+import axiosInstance from '@/api/axiosInstance'
+import { browserZone, instantIn, wallClockIn } from '@/lib/timeZone'
+import type { WallClock } from '@/lib/timeZone'
+import { CANCEL_REASON_LABEL, EMPTY_DRAFT } from '../constants/tpo'
+import { rulesFor } from '../helpers/tpo'
+import type { Audience, CancelReason, TpoDraft, TpoEvent } from '../types/tpo'
 
 export type ApiNotification = {
   notification_id: string
@@ -55,39 +58,75 @@ type ApiEvent = {
   series_id?: string | null
   recurrence?: string | null
   image_url?: string | null
+  /** The same start and end as instants (UTC), and the zone the times were typed in. */
+  starts_at?: string | null
+  ends_at?: string | null
+  time_zone?: string | null
 }
 
-const authHeaders = (): Record<string, string> => {
-  const session = readSession()
+// Every call goes through the app's axios client: token, errors and sign-out live there.
+const ask = async <T,>(path: string, init: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; data?: unknown } = {}): Promise<T> =>
+  (await axiosInstance.request<T>({ url: path, method: init.method ?? 'GET', data: init.data })).data
 
-  return session ? { Authorization: `Bearer ${session.token}` } : {}
-}
-
-const ask = async <T,>(path: string, init?: RequestInit): Promise<T> => {
-  let response: Response
-
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers ?? {}) },
-    })
-  } catch {
-    throw new ApiError(0, { detail: OFFLINE_MESSAGE, code: 'offline' })
+// "Offline · Hall A", "Online · Zoom", or a meeting link as it is.
+const locationOf = (entry: ApiEvent): string | undefined => {
+  if (entry.mode === 'offline' && entry.venue) return `Offline · ${entry.venue}`
+  if (entry.mode === 'online' && entry.online_platform) {
+    return /^https?:\/\//.test(entry.online_platform) ? entry.online_platform : `Online · ${entry.online_platform}`
   }
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}))
-    const error = new ApiError(response.status, body)
-    if (error.isAuth) signOutOnExpiry()
-
-    throw error
-  }
-
-  return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
+  return undefined
 }
 
+const cancelNoteOf = (entry: ApiEvent): string | undefined => {
+  const label = entry.cancel_reason ? CANCEL_REASON_LABEL[entry.cancel_reason as CancelReason] : ''
+  const note = [label, entry.cancel_note].filter(Boolean).join(' — ')
+
+  return note || undefined
+}
+
+/*
+  Times on screen are always the browser's own. The API sends each timed item's
+  instants, so a London viewer sees a Sydney campus's 10 AM as their 11 PM; on the
+  way back the browser's times are turned into the item's own zone again.
+*/
+const browserClock = (moment: Date): WallClock => ({
+  day: `${moment.getFullYear()}-${String(moment.getMonth() + 1).padStart(2, '0')}-${String(moment.getDate()).padStart(2, '0')}`,
+  time: `${String(moment.getHours()).padStart(2, '0')}:${String(moment.getMinutes()).padStart(2, '0')}`,
+})
+
+const shownTimes = (entry: ApiEvent) => {
+  if (!entry.start_time || !entry.starts_at) {
+    return {
+      eventDate: entry.event_date,
+      endDate: entry.end_date ?? entry.event_date,
+      startTime: entry.start_time ?? '',
+      endTime: entry.end_time ?? '',
+    }
+  }
+
+  const start = browserClock(new Date(entry.starts_at))
+  const end = entry.ends_at ? browserClock(new Date(entry.ends_at)) : null
+
+  return { eventDate: start.day, endDate: end?.day ?? start.day, startTime: start.time, endTime: end?.time ?? '' }
+}
+
+/** The zone a new item's times are kept in: a reminder is the user's own, an event is the campus's. */
+const zoneFor = (draft: TpoDraft): string =>
+  draft.timeZone ||
+  (draft.eventType === 'my_reminder' ? browserZone() : readSession()?.user.org_time_zone || browserZone())
+
+// The browser's date and time as the same instant on a clock in `zone`.
+const inZone = (day: string, time: string, zone: string): WallClock =>
+  wallClockIn(instantIn(day, time, browserZone()), zone)
+
+// The API's event, in the calendar's shape plus the TPO's own fields.
 const toEvent = (entry: ApiEvent): TpoEvent => ({
   id: entry.event_id,
+  isOwner: entry.is_owner,
+  // Who it reaches — reminders reach nobody but their owner, so they carry none.
+  reach: entry.event_type === 'my_reminder' || entry.event_type === 'nudge' ? undefined : entry.notified_count,
+  location: locationOf(entry),
   notifiedCount: entry.notified_count,
   createdBy: entry.is_owner ? 'me' : entry.created_by,
   createdByName: entry.is_owner ? 'you' : entry.created_by_name,
@@ -95,7 +134,7 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
   updatedAt: entry.updated_at > entry.created_at ? entry.updated_at : undefined,
   cancelledAt: entry.cancelled_at ?? undefined,
   cancelReason: (entry.cancel_reason as TpoEvent['cancelReason']) ?? undefined,
-  cancelNote: entry.cancel_note ?? undefined,
+  cancelNote: cancelNoteOf(entry),
   appliesToMe: entry.applies_to_me,
   removedReason: entry.removed_reason ?? undefined,
   changeSummary: entry.change_summary ?? undefined,
@@ -105,28 +144,26 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
   recurrence: entry.recurrence ?? undefined,
   draft: {
     ...EMPTY_DRAFT,
-    eventType: entry.event_type as EventDraft['eventType'],
+    eventType: entry.event_type as TpoDraft['eventType'],
     title: entry.title,
     company: entry.company ?? '',
-    eventDate: entry.event_date,
-    endDate: entry.end_date ?? entry.event_date,
-    startTime: entry.start_time ?? '',
-    endTime: entry.end_time ?? '',
-    mode: (entry.mode as EventDraft['mode']) ?? '',
+    ...shownTimes(entry),
+    timeZone: entry.time_zone ?? undefined,
+    mode: (entry.mode as TpoDraft['mode']) ?? '',
     venue: entry.venue ?? '',
     onlinePlatform: entry.online_platform ?? '',
     description: entry.description ?? '',
     note: entry.note ?? '',
     audience: entry.audience
       ? {
-          opportunityType: entry.audience.opportunity_type as EventDraft['audience']['opportunityType'],
+          opportunityType: entry.audience.opportunity_type as TpoDraft['audience']['opportunityType'],
           courses: entry.audience.courses,
           batches: entry.audience.batches,
           departments: entry.audience.departments,
         }
       : EMPTY_DRAFT.audience,
-    remindBefore: (entry.remind_before as EventDraft['remindBefore']) ?? 'none',
-    linkedType: (entry.linked_type as EventDraft['linkedType']) ?? null,
+    remindBefore: (entry.remind_before as TpoDraft['remindBefore']) ?? 'none',
+    linkedType: entry.linked_type ?? null,
     linkedId: entry.linked_id ?? null,
     imageUrl: entry.image_url ?? '',
     linkedJob: entry.linked_job
@@ -140,15 +177,28 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
   },
 })
 
-const toPayload = (draft: EventDraft) => ({
+// The draft's dates and times, moved from the browser's clock to the item's zone.
+// An all-day item has no clock, so its dates go as they are.
+const timesFor = (draft: TpoDraft, zone: string) => {
+  const endDay = draft.endDate || draft.eventDate
+  if (!draft.startTime) {
+    return { event_date: draft.eventDate, end_date: endDay, start_time: null, end_time: null }
+  }
+
+  const start = inZone(draft.eventDate, draft.startTime, zone)
+  const end = draft.endTime ? inZone(endDay, draft.endTime, zone) : null
+
+  return { event_date: start.day, end_date: end?.day ?? start.day, start_time: start.time, end_time: end?.time ?? null }
+}
+
+const toPayload = (draft: TpoDraft) => ({
   event_type: draft.eventType,
   title: draft.title,
   company: draft.company || null,
-  event_date: draft.eventDate,
-  end_date: draft.endDate || draft.eventDate,
-  start_time: draft.startTime || null,
-  end_time: draft.endTime || null,
-  mode: draft.mode || null,
+  ...timesFor(draft, zoneFor(draft)),
+  time_zone: zoneFor(draft),
+  // An online test or a deadline has no mode — not even the form's default.
+  mode: rulesFor(draft.eventType).needsMode ? draft.mode || null : null,
   venue: draft.venue || null,
   online_platform: draft.onlinePlatform || null,
   description: draft.description || null,
@@ -195,12 +245,12 @@ export const fetchComingUp = async (limit = 3): Promise<TpoEvent[]> =>
 export const fetchUnreadCount = async (): Promise<number> =>
   (await fetchNotifications()).filter((entry) => !entry.is_read).length
 
-export const createEvent = async (draft: EventDraft): Promise<TpoEvent> =>
-  toEvent(await ask<ApiEvent>('/calendar/events', { method: 'POST', body: JSON.stringify(toPayload(draft)) }))
+export const createEvent = async (draft: TpoDraft): Promise<TpoEvent> =>
+  toEvent(await ask<ApiEvent>('/calendar/events', { method: 'POST', data: (toPayload(draft)) }))
 
-export const updateEvent = async (eventId: string, draft: EventDraft): Promise<TpoEvent> =>
+export const updateEvent = async (eventId: string, draft: TpoDraft): Promise<TpoEvent> =>
   toEvent(
-    await ask<ApiEvent>(`/calendar/events/${eventId}`, { method: 'PUT', body: JSON.stringify(toPayload(draft)) }),
+    await ask<ApiEvent>(`/calendar/events/${eventId}`, { method: 'PUT', data: (toPayload(draft)) }),
   )
 
 export const cancelEvent = async (
@@ -212,7 +262,7 @@ export const cancelEvent = async (
   toEvent(
     await ask<ApiEvent>(`/calendar/events/${eventId}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ reason, note: note || null, scope }),
+      data: ({ reason, note: note || null, scope }),
     }),
   )
 
@@ -221,7 +271,7 @@ export const setEventAudience = async (eventId: string, audience: Audience): Pro
   toEvent(
     await ask<ApiEvent>(`/calendar/events/${eventId}/audience`, {
       method: 'PUT',
-      body: JSON.stringify({
+      data: ({
         audience: {
           opportunity_type: audience.opportunityType,
           courses: audience.courses,
@@ -236,7 +286,7 @@ export const uploadImage = async (dataUrl: string): Promise<string> =>
   (
     await ask<{ image_url: string }>('/calendar/images', {
       method: 'POST',
-      body: JSON.stringify({ data_url: dataUrl }),
+      data: ({ data_url: dataUrl }),
     })
   ).image_url
 
@@ -247,8 +297,8 @@ export const imageSrc = (imageUrl: string): string => (imageUrl ? `${API_BASE_UR
 export const fetchFeedLink = async (): Promise<string> =>
   (await ask<{ url: string }>('/calendar/feed/link')).url
 
-export const deleteReminder = (eventId: string): Promise<void> =>
-  ask<void>(`/calendar/events/${eventId}`, { method: 'DELETE' })
+export const deleteReminder = (eventId: string, scope: 'one' | 'series' = 'one'): Promise<void> =>
+  ask<void>(`/calendar/events/${eventId}?scope=${scope}`, { method: 'DELETE' })
 
 export const deleteAllEvents = (): Promise<{ count: number }> =>
   ask<{ count: number }>('/calendar/events?confirm=yes', { method: 'DELETE' })

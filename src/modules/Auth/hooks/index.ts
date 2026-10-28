@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { clearSession, fetchMe, readSession, writeSession } from '../services'
+import { clearSession, fetchMe, readSession, syncTimeZone, writeSession } from '../services'
 import type { Session } from '../types'
 
 export const useSession = () => {
@@ -14,13 +14,14 @@ export const useSession = () => {
     }
 
     let listening = true
-    fetchMe(stored.token).then((user) => {
+    fetchMe(stored.token).then(async (user) => {
       if (!listening) return
       if (!user) {
         clearSession()
         setSession(null)
       } else {
-        const next = { token: stored.token, user }
+        const next = await syncTimeZone({ token: stored.token, user })
+        if (!listening) return
         writeSession(next)
         setSession(next)
       }
@@ -35,6 +36,12 @@ export const useSession = () => {
   const signIn = useCallback((next: Session) => {
     writeSession(next)
     setSession(next)
+    // The zone follows in the background; the calendar reads it from the session.
+    syncTimeZone(next).then((synced) => {
+      if (synced === next) return
+      writeSession(synced)
+      setSession(synced)
+    })
   }, [])
 
   const signOut = useCallback(() => {

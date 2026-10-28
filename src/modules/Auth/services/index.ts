@@ -1,5 +1,6 @@
-import { ApiError } from '@/lib/apiError'
-import { API_BASE_URL, LOGIN_ROUTE, SESSION_KEY } from '../constants'
+import axiosInstance from '@/api/axiosInstance'
+import { browserZone } from '@/lib/timeZone'
+import { LOGIN_ROUTE, SESSION_KEY } from '../constants'
 import type { LoginResponse, Session } from '../types'
 
 export const readSession = (): Session | null => {
@@ -28,21 +29,9 @@ export const clearSession = (): void => {
 }
 
 export const login = async (email: string, password: string): Promise<Session> => {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })
+  const { data } = await axiosInstance.post<LoginResponse>('/auth/login', { email, password })
 
-  const body = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new ApiError(response.status, body)
-  }
-
-  const payload = body as LoginResponse
-
-  return { token: payload.access_token, user: payload.user }
+  return { token: data.access_token, user: data.user }
 }
 
 // StrictMode runs effects twice in dev, so a call already in flight is shared.
@@ -55,13 +44,35 @@ export const fetchMe = (token: string): Promise<Session['user'] | null> => {
 }
 
 const askMe = async (token: string): Promise<Session['user'] | null> => {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  try {
+    const { data } = await axiosInstance.get<Session['user']>('/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return data
+  } catch {
+    return null
+  }
+}
 
-  if (!response.ok) return null
+/**
+ * Tell the server where this browser is, if it doesn't know yet. Whoever is
+ * signed in now is where the account is now — their nudges and notifications
+ * follow this zone. The first staff sign-in also sets the college's zone.
+ */
+export const syncTimeZone = async (session: Session): Promise<Session> => {
+  const zone = browserZone()
+  if (session.user.time_zone === zone) return session
 
-  return response.json()
+  try {
+    const { data } = await axiosInstance.put<Session['user']>(
+      '/auth/me/time-zone',
+      { time_zone: zone },
+      { headers: { Authorization: `Bearer ${session.token}` } },
+    )
+    return { ...session, user: data }
+  } catch {
+    return session
+  }
 }
 
 export const signOutOnExpiry = (): void => {

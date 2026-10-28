@@ -1,53 +1,198 @@
-import { useRef, useState } from 'react'
-import { Users } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { BellRing, Building2, ExternalLink, Globe, Link2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import Calendar from '../../components/Calendar'
+import { messageOf, showError, showInfo, showSuccess } from '@/lib/toast'
+import { Calendar, DetailRow } from '@/calendar'
+import { useCalendarEvents } from '../../hooks/useCalendarEvents'
+import {
+  cancelEvent,
+  createEvent,
+  deleteAllEvents,
+  deleteReminder,
+  fetchFeedLink,
+  imageSrc,
+  updateEvent,
+} from '../../services/api'
 import AudienceDialog from '../../components/AudienceDialog'
+import FilterBar from '../../components/FilterBar'
 import PublishEventDialog from '../../components/PublishEventDialog'
-import { rulesFor } from '../../helpers/tpo'
-import { EMPTY_DRAFT, SIGNED_IN_TPO } from '../../constants/tpo'
-import type { CalendarHandle, EventActionContext } from '../../components/Calendar'
-import type { DayEntry } from '../../components/DayPreview'
-import type { EventDraft, TpoEvent } from '../../types/tpo'
+import { audienceLine, changedSummary, onlyMinorChanged, rulesFor, timeThere } from '../../helpers/tpo'
+import { visibleEvents } from '../../helpers/filters'
+import {
+  ASSESSMENT_EMAIL_NOTE,
+  CANCEL_REASONS,
+  EMPTY_DRAFT,
+  EMPTY_FILTERS,
+  TPO_DRAFT_DEFAULTS,
+  TPO_EVENT_TYPES,
+} from '../../constants/tpo'
+import { COMPANY_OPTIONS } from '../../constants'
+import { CALENDAR_LABELS } from '../../constants/labels'
+import type {
+  CalendarEvent,
+  CalendarHandle,
+  CalendarNotice,
+  DayEntry,
+  EventActionContext,
+  EventDraft,
+} from '@/calendar'
+import type { CalendarFilters, TpoDraft, TpoEvent } from '../../types/tpo'
 
 interface CalendarPageProps {
   title?: string
-  role?: 'tpo' | 'student'
+  role: 'tpo' | 'student'
+}
+
+const hasEnded = (event: TpoEvent): boolean => {
+  const { draft } = event
+  const lastDay = draft.endDate || draft.eventDate
+
+  return new Date(`${lastDay}T${draft.endTime || draft.startTime || '23:59'}:00`).getTime() < Date.now()
 }
 
 // An event's audience can change while it is still ahead, and only by the TPO who made it.
-const canChangeAudience = (event: TpoEvent): boolean => {
-  const { draft } = event
-  const lastDay = draft.endDate || draft.eventDate
-  const endsAt = new Date(`${lastDay}T${draft.endTime || draft.startTime || '23:59'}:00`)
+const canChangeAudience = (event: TpoEvent): boolean =>
+  event.isOwner &&
+  !event.cancelledAt &&
+  rulesFor(event.draft.eventType).needsAudience &&
+  event.draft.linkedType !== 'job_deadline' &&
+  !hasEnded(event)
 
-  return (
-    event.createdBy === SIGNED_IN_TPO &&
-    !event.cancelledAt &&
-    rulesFor(draft.eventType).needsAudience &&
-    draft.linkedType !== 'job_deadline' &&
-    endsAt.getTime() > Date.now()
-  )
+// "Fill Data" — sample values for a demo, per kind of item.
+const fillSample = (draft: EventDraft): Partial<EventDraft> =>
+  draft.eventType === 'my_reminder'
+    ? { title: 'Call the HR team for results', note: 'Ask about the shortlist date' }
+    : { title: 'TCS Campus Drive — Pre-Placement Talk', description: 'Bring your resume and ID card.' }
+
+// What the calendar noticed, in this app's words and toast.
+const sayNotice = (notice: CalendarNotice) => {
+  if (notice.type === 'reminder-limit') showInfo(`You've reached ${notice.limit} upcoming reminders. Delete some to add more.`)
+  if (notice.type === 'feed-link-copied') showSuccess('Calendar link copied.')
+  if (notice.type === 'feed-link-copy-failed') showError('Could not copy. Select the link and copy it by hand.')
 }
 
+const reachLine = (reach: number | undefined): string =>
+  reach === undefined ? '' : reach > 0 ? ` ${reach} students notified.` : ' It does not reach any students yet.'
+
 /**
- * The calendar route: the shared <Calendar /> and, beside it, the dialogs that
- * belong to the TPO — publishing an event, and choosing who it reaches.
- *
- * The two are deliberately apart. <Calendar /> is the same everywhere it is
- * mounted and stops at a title, a date and a note; deciding what kind of event
- * this is, who it reaches and where it happens belongs to whoever is using the
- * calendar — here, the TPO route. Its "Audience" button reaches the detail
- * panel through `eventActions`, the same door any route uses to add its own.
+ * The app's calendar route. <Calendar /> is the self-contained `src/calendar`
+ * package and knows nothing of TPOs, students, jobs or audiences. This page
+ * hands it the data, the event types and the permissions, and adds everything
+ * campus-specific around it: publishing, the audience, the filter, and the rows
+ * and buttons in the event panel.
  */
-const CalendarPage = ({ title, role = 'student' }: CalendarPageProps) => {
+const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) => {
+  const navigate = useNavigate()
   const calendar = useRef<CalendarHandle>(null)
-  const [publishing, setPublishing] = useState<EventDraft | null>(null)
+  const isTpo = role === 'tpo'
+  const [publishing, setPublishing] = useState<TpoDraft | null>(null)
   const [dayEntries, setDayEntries] = useState<DayEntry[]>([])
   const [audienceFor, setAudienceFor] = useState<TpoEvent | null>(null)
+  const [filters, setFilters] = useState<CalendarFilters>(EMPTY_FILTERS)
+  const { events, isLoading, loadError, refresh, retry } = useCalendarEvents()
 
-  const tpoActions = (event: TpoEvent, { defaults, close }: EventActionContext) => {
-    if (!canChangeAudience(event)) return defaults
+  const shown = useMemo(() => visibleEvents(events, filters, isTpo), [events, filters, isTpo])
+
+  /*
+    Every change goes through the app's API, the list is fetched again, and the
+    outcome is said here, in the app's toast — the calendar only learns whether
+    it worked, so it can close its dialog or leave it open.
+  */
+  const andRefresh =
+    <Args extends unknown[], Result>(
+      call: (...args: Args) => Promise<Result>,
+      success?: (result: Result, ...args: Args) => string | null,
+    ) =>
+    async (...args: Args): Promise<Result> => {
+      try {
+        const result = await call(...args)
+        await refresh()
+        const message = success?.(result, ...args)
+        if (message) showSuccess(message)
+        return result
+      } catch (error) {
+        showError(messageOf(error))
+        throw error
+      }
+    }
+
+  const isReminderId = (eventId: string) => events.find((event) => event.id === eventId)?.draft.eventType === 'my_reminder'
+
+  const create = andRefresh(
+    (draft: EventDraft) => createEvent(draft as TpoDraft),
+    (created, draft) =>
+      draft.eventType === 'my_reminder'
+        ? 'Reminder saved.'
+        : `Event published.${draft.recurrence ? ' Every occurrence is on the calendar.' : ''}${reachLine(created.reach)}`,
+  )
+
+  const cancel = andRefresh(cancelEvent, (_, eventId, _reason, _note, scope) => {
+    if (scope === 'series') return 'This and the later occurrences are cancelled.'
+    const reach = events.find((event) => event.id === eventId)?.notifiedCount
+    return reach ? `Event cancelled. ${reach} students notified.` : 'Event cancelled.'
+  })
+
+  const remove = andRefresh(
+    (eventId: string, { scope }: { scope: 'one' | 'series' }) => deleteReminder(eventId, scope),
+    (_, eventId, { scope }) =>
+      !isReminderId(eventId)
+        ? 'Event deleted permanently.'
+        : scope === 'series'
+          ? 'Reminder and its later dates deleted.'
+          : 'Reminder deleted.',
+  )
+
+  const removeAll = andRefresh(deleteAllEvents, ({ count }) =>
+    count ? `${count} items deleted permanently.` : 'Nothing to delete.',
+  )
+
+  const feedLink = () =>
+    fetchFeedLink().catch((error) => {
+      showError(messageOf(error))
+      throw error
+    })
+
+  /*
+    The calendar says only whether the user ticked "Notify about this change".
+    Which changes always notify — the date, the venue, the audience — and what
+    the students are told is the TPO's rule, so it is applied here.
+  */
+  const update = andRefresh(
+    async (eventId: string, draft: EventDraft, { notify }: { notify: boolean }) => {
+      const before = events.find((event) => event.id === eventId)
+      const next = draft as TpoDraft
+      const minorOnly = before ? onlyMinorChanged(before.draft, next) : false
+
+      return updateEvent(eventId, {
+        ...next,
+        changeSummary: before ? changedSummary(before.draft, next) : '',
+        notifyOnChange: !minorOnly || notify,
+      })
+    },
+    (_, __, draft) => (draft.eventType === 'my_reminder' ? 'Reminder updated.' : 'Changes saved.'),
+  )
+
+  const goToJobs = (close: () => void) => {
+    close()
+    navigate(`/${role}/jobs`)
+  }
+
+  const eventActions = (calendarEvent: CalendarEvent, { defaults, close }: EventActionContext) => {
+    const event = calendarEvent as TpoEvent
+    const { eventType, linkedType } = event.draft
+
+    // A student opens the job behind a deadline, or behind a nudge about one.
+    if (!isTpo && (eventType === 'deadline' || (eventType === 'nudge' && linkedType === 'job_deadline'))) {
+      return (
+        <>
+          {defaults}
+          <Button onClick={() => goToJobs(close)}>View &amp; Apply</Button>
+        </>
+      )
+    }
+
+    if (!isTpo || !canChangeAudience(event)) return defaults
 
     return (
       <>
@@ -66,15 +211,111 @@ const CalendarPage = ({ title, role = 'student' }: CalendarPageProps) => {
     )
   }
 
+  // The panel rows only a campus event has.
+  const eventDetails = (calendarEvent: CalendarEvent) => {
+    const event = calendarEvent as TpoEvent
+    const { draft } = event
+    const rules = rulesFor(draft.eventType)
+    const isAutoDeadline = draft.eventType === 'deadline' && draft.linkedType === 'job_deadline'
+    const hasAudience = draft.audience.courses.length > 0
+    const showsAudience = rules.needsAudience && !isAutoDeadline && draft.eventType !== 'nudge'
+    const there = draft.eventType === 'nudge' ? null : timeThere(draft)
+
+    return (
+      <>
+        {there && (
+          <DetailRow icon={Globe} label={draft.eventType === 'my_reminder' ? 'Set for' : 'Campus time'}>
+            {there}
+          </DetailRow>
+        )}
+
+        {draft.company && (
+          <DetailRow icon={Building2} label="Company">
+            {draft.company}
+          </DetailRow>
+        )}
+
+        {isAutoDeadline && event.deadlineCounts && (
+          <DetailRow icon={Users} label="Students">
+            {`${event.deadlineCounts.eligible} eligible · ${event.deadlineCounts.applied} applied · ${event.deadlineCounts.not_applied} not applied`}
+          </DetailRow>
+        )}
+
+        {showsAudience && (
+          <DetailRow icon={Users} label="Audience">
+            {hasAudience ? audienceLine(draft) : 'Not chosen yet'}
+          </DetailRow>
+        )}
+        {showsAudience && (
+          <DetailRow icon={BellRing} label="Notified">
+            {`${event.notifiedCount} students`}
+          </DetailRow>
+        )}
+
+        {isTpo && event.isOwner && showsAudience && !hasAudience && !event.cancelledAt && (
+          <p className="rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [color:var(--ds-color-warning-text)]">
+            Published, but no students see it yet. Choose who it reaches.
+          </p>
+        )}
+
+        {draft.eventType === 'online_assessment' && !event.isOwner && (
+          <p className="rounded-md px-3 py-2 text-sm [background-color:var(--ds-color-info-subtle)] [color:var(--ds-color-info)]">
+            {ASSESSMENT_EMAIL_NOTE}
+          </p>
+        )}
+
+        {draft.linkedJob && (
+          <DetailRow icon={Link2} label="Linked job">
+            {draft.linkedJob.kind === 'campus' ? (
+              draft.linkedJob.campusJob
+            ) : (
+              <span className="flex flex-wrap items-center gap-2">
+                {draft.linkedJob.title}
+                <Button asChild variant="link" className="h-auto gap-1 p-0 text-sm">
+                  <a href={draft.linkedJob.url} target="_blank" rel="noreferrer">
+                    Open job
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                </Button>
+              </span>
+            )}
+          </DetailRow>
+        )}
+      </>
+    )
+  }
+
   return (
     <>
       <Calendar
         ref={calendar}
         title={title}
-        role={role}
-        onNext={setPublishing}
+        labels={CALENDAR_LABELS}
+        permissions={{ createEvents: isTpo }}
+        eventTypes={TPO_EVENT_TYPES}
+        draftDefaults={TPO_DRAFT_DEFAULTS}
+        cancelReasons={CANCEL_REASONS}
+        audienceNoun="students"
+        fillSample={fillSample}
+        events={shown}
+        isLoading={isLoading}
+        loadError={loadError}
+        onRetry={retry}
+        onCreate={create}
+        onUpdate={update}
+        onCancel={cancel}
+        onDelete={remove}
+        onDeleteAll={isTpo ? removeAll : undefined}
+        getFeedLink={feedLink}
+        resolveImageUrl={imageSrc}
+        onNotice={sayNotice}
+        onNext={(draft) => setPublishing(draft as TpoDraft)}
         onDayEntries={setDayEntries}
-        eventActions={role === 'tpo' ? tpoActions : undefined}
+        eventActions={eventActions}
+        renderEventDetails={eventDetails}
+        toolbarExtras={
+          isTpo ? <FilterBar filters={filters} companies={COMPANY_OPTIONS} onChange={setFilters} /> : undefined
+        }
       />
 
       <PublishEventDialog
@@ -103,7 +344,7 @@ const CalendarPage = ({ title, role = 'student' }: CalendarPageProps) => {
         onClose={() => setAudienceFor(null)}
         onSaved={() => {
           setAudienceFor(null)
-          calendar.current?.refresh()
+          refresh()
         }}
       />
     </>

@@ -1,0 +1,110 @@
+/*
+  The calendar's own styles. Imported by the calendar itself, so copying the
+  folder brings them along. It only declares calendar tokens and the toast
+  motion — nothing here restyles the host app.
+*/
+:root {
+    /* ── Campus Calendar items. Each one points at an existing semantic token,
+       so an org theme or dark mode re-colours the calendar with everything
+       else — nothing here carries a raw hex. ── */
+    --ds-color-calendar-event: var(--ds-color-info);
+    --ds-color-calendar-event-subtle: var(--ds-color-info-subtle);
+    --ds-color-calendar-deadline: var(--ds-color-danger);
+    --ds-color-calendar-deadline-subtle: var(--ds-color-danger-subtle);
+    --ds-color-calendar-reminder: var(--ds-color-text-secondary);
+    --ds-color-calendar-reminder-subtle: var(--ds-color-bg-subtle);
+    --ds-color-calendar-nudge: var(--ds-color-accent);
+    --ds-color-calendar-nudge-subtle: var(--ds-color-accent-subtle);
+    --ds-color-calendar-cancelled: var(--ds-color-text-tertiary);
+    --ds-color-calendar-cancelled-subtle: var(--ds-color-bg-muted);
+}
+
+@keyframes toast-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-64px) scale(0.8);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translateY(7px) scale(1.03);
+  }
+
+  78% {
+    transform: translateY(-3px) scale(0.99);
+  }
+
+  92% {
+    transform: translateY(1px) scale(1.005);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-leave {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translateY(8px) scale(0.97);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.85);
+  }
+}
+
+/* The card drops in from above, overshoots, and springs back — a real settle
+   rather than a stop. The bounce is in the keyframes (down past the mark, up,
+   down again, each swing smaller) instead of in one curve, because a single
+   cubic-bezier can only overshoot once and it reads mechanical.
+   `transform` here composes with the stacking offset react-hot-toast puts on
+   the wrapper, so the two do not fight. */
+.animate-enter {
+  animation: toast-enter 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Leaving anticipates: a small dip down first, then it snaps up and out. That
+   dip is what makes the exit read as deliberate rather than as the toast simply
+   being deleted. Quicker than the entrance, so nothing lingers. */
+.animate-leave {
+  animation: toast-leave 0.32s cubic-bezier(0.55, 0, 0.85, 0.35) forwards;
+}
+
+/* A toast that pops and slides is motion for its own sake to anyone who has
+   asked the system to keep still. They still get the fade. */
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-enter,
+  .animate-leave {
+    animation-duration: 0.15s;
+    animation-timing-function: ease;
+  }
+
+  @keyframes toast-enter {
+    0% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes toast-leave {
+    0% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+}

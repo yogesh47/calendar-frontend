@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fetchEvents, fetchUnreadCount, openCalendarStream } from '@/modules/Calendar/services/api'
-import { onWindowFocus } from '@/modules/Calendar/services/store'
+import { onWindowFocus } from '@/modules/Calendar/services/live'
 import ComingUp from '../../components/ComingUp'
 import UpdatesFeed from '../../components/UpdatesFeed'
-import { DASHBOARD_COPY } from '../../constants'
+import { DASHBOARD_COPY } from './DashboardPage.constants'
 import type { TpoEvent } from '@/modules/Calendar/types/tpo'
 
 interface DashboardPageProps {

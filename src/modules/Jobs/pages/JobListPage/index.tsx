@@ -1,4 +1,4 @@
-import { CAMPUS_JOBS } from '@/modules/Calendar/services/jobs'
+import { CAMPUS_JOBS } from '@/modules/Jobs/services/jobs'
 
 const JobListPage = () => (
   <div className="flex w-full flex-col gap-4 p-3 sm:p-6">

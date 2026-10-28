@@ -5,6 +5,8 @@ docs/
 ├── README.md                              ← ye file
 ├── campus-calendar-master.md              sab kuch: feature se lekar build steps tak
 ├── campus-calendar-backend-design.md      backend ka poora architecture
+├── timezone.md                            time zones: login, signup, event create — kya bhejna hai
+├── calendar-usage.md                      <Calendar /> kaise use karein: har prop, callback, label, icon, piece
 └── requirements/                          product team ne di — AS-IS, edit mat karna
     ├── campus-calendar-hld.md
     ├── campus-calendar-brd.md

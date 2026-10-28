@@ -1788,19 +1788,6 @@ input[type=range]::-webkit-slider-runnable-track {
     --ds-color-info-subtle: var(--color-blue-50);
     --ds-color-overlay: rgba(15, 23, 42, 0.5);
 
-    /* ── Campus Calendar items. Each one points at an existing semantic token,
-       so an org theme or dark mode re-colours the calendar with everything
-       else — nothing here carries a raw hex. ── */
-    --ds-color-calendar-event: var(--ds-color-info);
-    --ds-color-calendar-event-subtle: var(--ds-color-info-subtle);
-    --ds-color-calendar-deadline: var(--ds-color-danger);
-    --ds-color-calendar-deadline-subtle: var(--ds-color-danger-subtle);
-    --ds-color-calendar-reminder: var(--ds-color-text-secondary);
-    --ds-color-calendar-reminder-subtle: var(--ds-color-bg-subtle);
-    --ds-color-calendar-nudge: var(--ds-color-accent);
-    --ds-color-calendar-nudge-subtle: var(--ds-color-accent-subtle);
-    --ds-color-calendar-cancelled: var(--ds-color-text-tertiary);
-    --ds-color-calendar-cancelled-subtle: var(--ds-color-bg-muted);
 
     /* Full spacing scale */
     --ds-space-5: 20px;
