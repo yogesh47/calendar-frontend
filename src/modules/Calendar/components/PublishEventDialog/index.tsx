@@ -362,7 +362,7 @@ const PublishEventDialog = ({
 
           {rules.needsAudience && onStepTwo && (
             <Section
-              title="Who should see this?"
+              title="Target Audience"
               caption="Leave it empty to publish now and choose later from the event."
             >
               <AudienceFields
