@@ -26,7 +26,7 @@ interface SyncDialogProps {
 
 
 /*
-  Google / Outlook / Apple Calendar subscribe to the same .ics URL and re-read it
+  Google Calendar and Outlook subscribe to the same .ics URL and re-read it
   on their own (Google takes a few hours, the others about an hour). It is
   one-way on purpose: events are made here and flow out, so nothing edited in
   another app can quietly change what people were sent.
@@ -40,7 +40,6 @@ const providers = (url: string, calendarName: string) => {
       label: 'Outlook',
       href: `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(url)}&name=${encodeURIComponent(calendarName)}`,
     },
-    { label: 'Apple Calendar', href: webcal },
   ]
 }
 

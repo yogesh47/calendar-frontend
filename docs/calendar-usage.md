@@ -411,7 +411,7 @@ Pass any subset; the rest keep their defaults.
 | `goBack` | Go Back | Confirm and cancel dialogs |
 | `done` | Done | Sync dialog |
 | `retry` | Retry | Error state |
-| `syncDescription` | See these events in Google, Outlook or Apple Calendar… | Sync dialog |
+| `syncDescription` | See these events in Google Calendar or Outlook… | Sync dialog |
 
 `createLabel` overrides only the create button, whichever text it would show.
 
@@ -434,7 +434,7 @@ An icon is any React component that takes SVG props (`className`, `style`, `stro
 Names (defaults are lucide): `AlignLeft`, `Bell`, `BellPlus`, `Calendar`, `CalendarDays`,
 `CalendarPlus`, `Check`, `ChevronDown`, `ChevronLeft`, `ChevronRight`, `Clock`, `Copy`,
 `ExternalLink`, `Info`, `Link2`, `Lock`, `MapPin`, `Minus`, `Plus`, `RefreshCw`, `Repeat`,
-`Search`, `StickyNote`, `Tag`, `Trash2`, `TriangleAlert`, `Wand2`, `X`.
+`Search`, `StickyNote`, `Tag`, `Trash2`, `TriangleAlert`, `Type`, `Wand2`, `X`.
 `DEFAULT_ICONS` holds the full set.
 
 ---

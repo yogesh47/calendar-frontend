@@ -44,7 +44,7 @@ export const DEFAULT_LABELS = {
   goToEvent: 'Go to the event',
   openLink: 'Open link',
   updateReminder: 'Update reminder',
-  syncDescription: 'See these events in Google, Outlook or Apple Calendar. Changes and cancellations follow automatically.',
+  syncDescription: 'See these events in Google Calendar or Outlook. Changes and cancellations follow automatically.',
 }
 
 export type CalendarLabels = typeof DEFAULT_LABELS

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { format } from 'date-fns'
-import { AlignLeft, Bell, CalendarPlus, Clock, Info, Lock, Repeat, StickyNote, Tag, Trash2, TriangleAlert, Wand2 } from '../../icons'
+import { AlignLeft, Bell, CalendarPlus, Clock, Info, Lock, Repeat, StickyNote, Tag, Trash2, TriangleAlert, Type, Wand2 } from '../../icons'
 import { useFormik, validateYupSchema, yupToFormErrors } from 'formik'
 import { cn } from '../../lib/utils'
 import { Button } from '../../shared/ui/Button'
@@ -295,7 +295,9 @@ const CalendarEntryDialog = ({
             >
               <div className="min-h-0 min-w-0 overflow-y-auto rounded-xl border [background-color:var(--ds-color-bg-surface)]">
                 {/* The title is the event's name, so it leads — large and unboxed, as in a calendar app. */}
-                <div className="px-4 pb-3 pt-4">
+                <div role="group" aria-label="Title" className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-3 px-4 pb-3 pt-4">
+                  <Type aria-hidden className="mt-2 size-4 [color:var(--ds-color-text-secondary)]" />
+                  <div className="min-w-0">
                   <input
                     name="title"
                     aria-label="Title"
@@ -308,8 +310,10 @@ const CalendarEntryDialog = ({
                     className={cn(
                       'w-full border-0 border-b-2 bg-transparent pb-1.5 text-xl font-semibold outline-none transition-colors',
                       'placeholder:font-normal placeholder:[color:var(--ds-color-text-tertiary)]',
-                      '[border-color:var(--ds-color-border-default)] hover:[border-color:var(--ds-color-border-strong)] focus:[border-color:var(--ds-color-brand)]',
-                      errorFor('title') && '[border-color:var(--ds-color-danger)]',
+                      '[border-color:var(--ds-color-border-default)] focus:[border-color:var(--ds-color-brand)]',
+                      errorFor('title')
+                        ? '[border-color:var(--ds-color-danger)]'
+                        : 'hover:[border-color:var(--ds-color-border-focus)]',
                     )}
                   />
                   {/* The counter only matters near the limit; before that it is noise. */}
@@ -321,6 +325,7 @@ const CalendarEntryDialog = ({
                       </span>
                     </div>
                   )}
+                  </div>
                 </div>
 
                 {/* No rule between rows — the icons and the spacing already separate them. */}

@@ -30,7 +30,7 @@ export interface CalendarToolbarProps {
   onMonthChange: (month: Date) => void
   onPickDay: (day: Date) => void
   onWipe: () => void
-  /** "Sync" — subscribe from Google / Outlook / Apple Calendar. */
+  /** "Sync" — subscribe from Google Calendar or Outlook. */
   onSync?: () => void
   /** The app's own controls — its filter, say — shown beside the view switch. */
   toolbarExtras?: ReactNode

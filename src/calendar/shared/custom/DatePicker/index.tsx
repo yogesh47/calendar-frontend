@@ -69,6 +69,7 @@ const DatePicker = ({
             hasError
               ? '[border-color:var(--ds-color-danger)]'
               : '[border-color:var(--ds-color-border-default)]',
+            !hasError && !isDisabled && 'hover:[border-color:var(--ds-color-border-focus)] data-[state=open]:[border-color:var(--ds-color-border-focus)]',
             'focus-visible:[box-shadow:var(--ds-shadow-focus)]',
             isDisabled && 'cursor-not-allowed opacity-60 [background-color:var(--ds-color-bg-muted)]',
             className,

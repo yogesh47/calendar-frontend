@@ -26,6 +26,7 @@ import {
   Tag as LucideTag,
   Trash2 as LucideTrash2,
   TriangleAlert as LucideTriangleAlert,
+  Type as LucideType,
   Wand2 as LucideWand2,
   X as LucideX,
 } from 'lucide-react'
@@ -68,6 +69,7 @@ export const DEFAULT_ICONS = {
   Tag: LucideTag,
   Trash2: LucideTrash2,
   TriangleAlert: LucideTriangleAlert,
+  Type: LucideType,
   Wand2: LucideWand2,
   X: LucideX,
 } satisfies Record<string, IconComponent>
@@ -114,5 +116,6 @@ export const StickyNote = icon('StickyNote')
 export const Tag = icon('Tag')
 export const Trash2 = icon('Trash2')
 export const TriangleAlert = icon('TriangleAlert')
+export const Type = icon('Type')
 export const Wand2 = icon('Wand2')
 export const X = icon('X')

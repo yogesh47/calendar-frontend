@@ -203,7 +203,8 @@ const TiptapEditor = ({
     if (error || isOverLimit) {
       return `${base} ${disabledStyles} [border-color:var(--ds-color-danger)]`
     }
-    return `${base} ${disabledStyles} [border-color:var(--ds-color-border-default)] focus-within:[border-color:var(--ds-color-border-focus)] focus-within:[box-shadow:var(--ds-shadow-focus)] ${boxClassName}`
+    const hoverStyles = disabled ? '' : 'hover:[&:not(:focus-within)]:[border-color:var(--ds-color-border-focus)]'
+    return `${base} ${disabledStyles} [border-color:var(--ds-color-border-default)] ${hoverStyles} focus-within:[border-color:var(--ds-color-border-focus)] focus-within:[box-shadow:var(--ds-shadow-focus)] ${boxClassName}`
   }
 
   if (!editor) return null

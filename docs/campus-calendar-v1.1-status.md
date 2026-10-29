@@ -8,7 +8,7 @@ without reading the whole repo first.
 |---|---|---|
 | 1 | Audience out of the create pop-up | ✅ Done — "Who should see this?" is its own section on the Publish step; leave it empty to publish now and pick later from the event (`AudienceDialog`) |
 | 2 | Recurring events | ✅ Done — Repeat (daily / weekly / monthly, every N, until) on the first modal; one row per occurrence sharing `series_id`; cancel "only this" or "this and later" |
-| 3 | Sync / link with other calendars | ✅ Done (one-way) — personal `.ics` feed (`/calendar/feed.ics?token=`) + Google / Outlook / Apple buttons in the Sync dialog |
+| 3 | Sync / link with other calendars | ✅ Done (one-way) — personal `.ics` feed (`/calendar/feed.ics?token=`) + Google / Outlook buttons in the Sync dialog |
 | 4 | Attach an image to an event | ✅ Done — `ImageField` on the Publish step, `/calendar/images` upload (PNG/JPG/GIF/WebP, 2 MB, magic-byte checked), shown in the detail panel |
 | 5 | Event creation generic, not TPO-specific | ✅ Done |
 | 6 | Calendars for Teacher / Industry / Admin portals | ❌ To explore |
