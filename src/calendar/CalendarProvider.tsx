@@ -1,15 +1,15 @@
 import { useMemo } from 'react'
 import { DEFAULT_ICONS, IconsContext } from './icons'
-import { DEFAULT_LABELS, LabelsContext } from './labels'
+import { LabelsContext, mergeLabels } from './labels'
 import type { ReactNode } from 'react'
 import type { CalendarIcons } from './icons'
-import type { CalendarLabels } from './labels'
+import type { CalendarLabels, CalendarLabelsInput } from './labels'
 
 export interface CalendarProviderProps {
   /** The app's own icons, by name; the rest stay the defaults. */
   icons?: Partial<CalendarIcons>
   /** The app's own words; the rest stay the defaults. */
-  labels?: Partial<CalendarLabels>
+  labels?: CalendarLabelsInput
   children: ReactNode
 }
 
@@ -20,7 +20,7 @@ export interface CalendarProviderProps {
  */
 const CalendarProvider = ({ icons, labels, children }: CalendarProviderProps) => {
   const iconSet = useMemo<CalendarIcons>(() => ({ ...DEFAULT_ICONS, ...icons }), [icons])
-  const words = useMemo<CalendarLabels>(() => ({ ...DEFAULT_LABELS, ...labels }), [labels])
+  const words = useMemo<CalendarLabels>(() => mergeLabels(labels), [labels])
 
   return (
     <IconsContext.Provider value={iconSet}>

@@ -217,7 +217,7 @@ const CalendarEntryDialog = ({
 
   const close = () => onClose()
 
-  const saveLabel = isEdit ? labels.saveChanges : isReminder ? labels.saveReminder : labels.publishEvent
+  const saveLabel = isEdit ? labels.entryDialog.saveChanges : isReminder ? labels.entryDialog.saveReminder : labels.entryDialog.publishEvent
 
   /*
     Only the fields the first step actually draws are checked before moving on.
@@ -260,11 +260,11 @@ const CalendarEntryDialog = ({
                     <DialogTitle className="whitespace-nowrap">
                       {reminderOnly
                         ? isEdit
-                          ? labels.editReminderTitle
-                          : labels.addReminderTitle
+                          ? labels.entryDialog.editReminderTitle
+                          : labels.entryDialog.addReminderTitle
                         : isEdit
-                          ? labels.editEventTitle
-                          : labels.createEventTitle}
+                          ? labels.entryDialog.editEventTitle
+                          : labels.entryDialog.createEventTitle}
                     </DialogTitle>
                     <DialogDescription className="sr-only">Event details</DialogDescription>
                   </div>
@@ -275,13 +275,13 @@ const CalendarEntryDialog = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    title={labels.fillData}
+                    title={labels.entryDialog.fillData}
                     aria-label="Fill Data"
                     className="mr-11 px-2 sm:mr-16 sm:px-3"
                     onClick={fillDummy}
                   >
                     <Wand2 className="size-3.5" />
-                    <span className="hidden sm:inline">{labels.fillData}</span>
+                    <span className="hidden sm:inline">{labels.entryDialog.fillData}</span>
                   </Button>
                 )}
               </div>
@@ -339,7 +339,7 @@ const CalendarEntryDialog = ({
                         placeholder="Select event type"
                         options={[
                           ...eventTypes.map((option) => ({ value: option.value, label: option.label })),
-                          { value: REMINDER_TYPE, label: labels.myReminder },
+                          { value: REMINDER_TYPE, label: labels.entryDialog.myReminder },
                         ]}
                         onChange={pickType}
                       />
@@ -519,22 +519,22 @@ const CalendarEntryDialog = ({
               <span className="flex shrink-0 justify-end gap-2">
                 {isEdit && canCancelEvent && !isReminder && (
                   <Button type="button" variant="outline" onClick={onCancelEvent}>
-                    {labels.cancelEvent}
+                    {labels.entryDialog.cancelEvent}
                   </Button>
                 )}
 
                 {isEdit && canDeleteReminder && isReminder && (
                   <Button type="button" variant="outline" onClick={onDeleteReminder}>
                     <Trash2 className="size-4" />
-                    {labels.delete}
+                    {labels.entryDialog.delete}
                   </Button>
                 )}
                 <Button type="button" variant="outline" onClick={close}>
-                  {isEdit ? labels.close : labels.cancel}
+                  {isEdit ? labels.entryDialog.close : labels.entryDialog.cancel}
                 </Button>
                 {handsOn ? (
                   <Button type="button" onClick={goToStepTwo}>
-                    {labels.next}
+                    {labels.entryDialog.next}
                   </Button>
                 ) : (
                   <Button type="submit">{saveLabel}</Button>

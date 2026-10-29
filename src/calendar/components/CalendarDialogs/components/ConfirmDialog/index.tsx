@@ -34,7 +34,7 @@ const ConfirmDialog = ({ open, title, confirmLabel, onBack, onConfirm, alternate
 
       <DialogFooter>
         <Button variant="outline" onClick={onBack}>
-          {labels.goBack}
+          {labels.confirmDialog.goBack}
         </Button>
         {alternateLabel && onAlternate && (
           <Button variant="outline" onClick={onAlternate}>

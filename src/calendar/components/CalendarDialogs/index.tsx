@@ -134,17 +134,17 @@ const CalendarDialogs = ({
     <ConfirmDialog
       open={Boolean(deleting)}
       title={deleting?.seriesId ? 'Delete this repeating reminder?' : 'Delete this reminder?'}
-      confirmLabel={labels.delete}
+      confirmLabel={labels.confirmDialog.delete}
       onBack={() => onAskDelete(null)}
       onConfirm={() => onConfirmDelete('one')}
-      alternateLabel={deleting?.seriesId ? labels.deleteRepeatsToo : undefined}
+      alternateLabel={deleting?.seriesId ? labels.confirmDialog.deleteRepeatsToo : undefined}
       onAlternate={() => onConfirmDelete('series')}
     />
 
     <ConfirmDialog
       open={wiping}
       title={`Delete all ${totalCount} events and reminders permanently?`}
-      confirmLabel={labels.deleteAll}
+      confirmLabel={labels.confirmDialog.deleteAll}
       onBack={() => onAskWipe(false)}
       onConfirm={onConfirmWipe}
     />
@@ -152,7 +152,7 @@ const CalendarDialogs = ({
     <ConfirmDialog
       open={Boolean(purging)}
       title="Delete this cancelled event permanently?"
-      confirmLabel={labels.deletePermanently}
+      confirmLabel={labels.confirmDialog.deletePermanently}
       onBack={() => onAskPurge(null)}
       onConfirm={onConfirmPurge}
     />

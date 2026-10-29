@@ -22,7 +22,7 @@ export type { CalendarProviderProps } from './CalendarProvider'
 export { DEFAULT_ICONS } from './icons'
 export type { CalendarIconName, CalendarIcons, IconComponent, IconProps } from './icons'
 export { DEFAULT_LABELS } from './labels'
-export type { CalendarLabels } from './labels'
+export type { CalendarLabels, CalendarLabelsInput } from './labels'
 
 // ── Pieces, each usable on its own ──────────────────────────────────
 /** The small month in the sidebar. */

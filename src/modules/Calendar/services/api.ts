@@ -3,6 +3,7 @@ import { readSession } from '@/modules/Auth/services'
 import axiosInstance from '@/api/axiosInstance'
 import { browserZone, instantIn, wallClockIn } from '@/lib/timeZone'
 import type { WallClock } from '@/lib/timeZone'
+import type { CalendarSyncSettings } from '@/calendar'
 import { CANCEL_REASON_LABEL, EMPTY_DRAFT } from '../constants/tpo'
 import { rulesFor } from '../helpers/tpo'
 import type { Audience, CancelReason, TpoDraft, TpoEvent } from '../types/tpo'
@@ -292,6 +293,43 @@ export const uploadImage = async (dataUrl: string): Promise<string> =>
 
 /** The stored path is relative to the API, not to this app. */
 export const imageSrc = (imageUrl: string): string => (imageUrl ? `${API_BASE_URL}${imageUrl}` : '')
+
+type ApiFeedSettings = {
+  past_days: number
+  future_days: number
+  events: boolean
+  deadlines: boolean
+  reminders: boolean
+  cancelled: boolean
+}
+
+const toSyncSettings = (entry: ApiFeedSettings): CalendarSyncSettings => ({
+  pastDays: entry.past_days,
+  futureDays: entry.future_days,
+  events: entry.events,
+  deadlines: entry.deadlines,
+  reminders: entry.reminders,
+  cancelled: entry.cancelled,
+})
+
+/** What the user's calendar sync carries: their own choices over the college's defaults. */
+export const fetchSyncSettings = async (): Promise<CalendarSyncSettings> =>
+  toSyncSettings(await ask<ApiFeedSettings>('/calendar/feed/settings'))
+
+export const saveSyncSettings = async (settings: CalendarSyncSettings): Promise<CalendarSyncSettings> =>
+  toSyncSettings(
+    await ask<ApiFeedSettings>('/calendar/feed/settings', {
+      method: 'PUT',
+      data: {
+        past_days: settings.pastDays,
+        future_days: settings.futureDays,
+        events: settings.events,
+        deadlines: settings.deadlines,
+        reminders: settings.reminders,
+        cancelled: settings.cancelled,
+      },
+    }),
+  )
 
 /** The signed-in user's private .ics subscription URL. */
 export const fetchFeedLink = async (): Promise<string> =>

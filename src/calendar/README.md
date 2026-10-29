@@ -18,7 +18,7 @@ Contents
 4. [`<Calendar />` props](#4-calendar--props)
 5. [Callbacks — when each one is called](#5-callbacks--when-each-one-is-called)
 6. [Permissions and ownership](#6-permissions-and-ownership)
-7. [Labels — every button text](#7-labels--every-button-text)
+7. [Labels — every word, per part of the screen](#7-labels--every-word-per-part-of-the-screen)
 8. [Icons](#8-icons)
 9. [Slots — adding the app's own UI](#9-slots--adding-the-apps-own-ui)
 10. [A second step after "Next" (`onNext` + ref)](#10-a-second-step-after-next-onnext--ref)
@@ -234,6 +234,8 @@ The first entry is the default type of a new event.
 | `onDelete` | `(eventId, { scope: 'one' \| 'series' }) => Promise<unknown>` | **yes** |
 | `onDeleteAll` | `() => Promise<{ count: number }>` | no — leave out to hide "Delete all" |
 | `getFeedLink` | `() => Promise<string>` | no — leave out to hide "Sync" |
+| `getSyncSettings` | `() => Promise<CalendarSyncSettings>` | no — with `onSyncSettingsChange`, the Sync dialog shows "what to sync" and the range |
+| `onSyncSettingsChange` | `(settings: CalendarSyncSettings) => Promise<unknown>` | no — reject to keep the old choice |
 | `resolveImageUrl` | `(path) => string` | no — default returns `path` as it is |
 | `onNotice` | `(notice: CalendarNotice) => void` | no |
 | `onNext` | `(draft) => void` | no — see [section 10](#10-a-second-step-after-next-onnext--ref) |
@@ -268,7 +270,7 @@ The first entry is the default type of a new event.
 
 | Prop | Type | Default | What it does |
 |---|---|---|---|
-| `labels` | `Partial<CalendarLabels>` | English defaults | Every button text and title — [section 7](#7-labels--every-button-text) |
+| `labels` | `CalendarLabelsInput` | English defaults | Every word, grouped per part of the screen — [section 7](#7-labels--every-word-per-part-of-the-screen) |
 | `icons` | `Partial<CalendarIcons>` | lucide | Every icon — [section 8](#8-icons) |
 | `views` | `('day' \| 'week' \| 'month' \| 'list')[]` | all four | Which views, in this order |
 | `defaultView` | same | `'month'` (or the first of `views`) | Opening view |
@@ -310,6 +312,8 @@ const calendar = useRef<CalendarHandle>(null)
 | `onDelete` | Deleting a reminder, or "Delete permanently" on a cancelled event | `eventId`, `{ scope }` — `'series'` when "This and later" was chosen on a repeating reminder | `Promise` |
 | `onDeleteAll` | "Delete all" confirmed | — | `Promise<{ count }>` |
 | `getFeedLink` | The Sync dialog opens | — | `Promise<string>` — a private .ics URL |
+| `getSyncSettings` | The Sync dialog opens | — | `Promise<CalendarSyncSettings>` — `{ pastDays, futureDays, events, deadlines, reminders, cancelled }` |
+| `onSyncSettingsChange` | Any choice in the Sync dialog changes (saved straight away) | the new `CalendarSyncSettings` | `Promise` — reject to put the old choice back |
 | `onRetry` | Retry on the error state | — | — |
 | `onNotice` | Something the calendar noticed (see below) | `CalendarNotice` | — |
 | `onNext` | "Next" in the create dialog (events only, when given) | the draft so far | — |
@@ -367,51 +371,51 @@ An app maps its roles to these, e.g. `permissions={{ createEvents: role === 'tpo
 
 ---
 
-## 7. Labels — every button text
+## 7. Labels — every word, per part of the screen
 
-Pass any subset; the rest keep their defaults.
+Words are grouped by where they appear — the toolbar and each dialog have their
+own group, so the same word ("Cancel", "Delete") can read differently in two
+dialogs. Pass any group, and any words in it; everything left out keeps its default.
 
 ```tsx
-<Calendar labels={{ newEvent: 'Add meeting', viewWeek: 'Hafta', publishEvent: 'Publish' }} … />
+<Calendar
+  labels={{
+    title: 'Team calendar',
+    toolbar: { newEvent: 'Add meeting', viewWeek: 'Hafta' },
+    entryDialog: { cancel: 'Rehne do' },
+    syncDialog: { title: 'Connect your calendar' },
+  }}
+/>
 ```
 
-| Key | Default | Where |
+Type: `CalendarLabelsInput` (what you pass) → `CalendarLabels` (all words, after defaults).
+
+| Group | Key | Default |
 |---|---|---|
-| `title` | Calendar | Heading (when `title` prop is not given) |
-| `newEvent` | New Event | Create button (can create events) |
-| `addReminder` | Add Reminder | Create button (reminders only) |
-| `myReminder` | My Reminder | The reminder type in the type picker |
-| `createEventTitle` | Create New Event | Dialog title |
-| `editEventTitle` | Edit Event | Dialog title |
-| `addReminderTitle` | Add Reminder | Dialog title |
-| `editReminderTitle` | Edit Reminder | Dialog title |
-| `today` | Today | Date picker |
-| `sync` | Sync | Toolbar |
-| `deleteAll` | Delete all | Toolbar, confirm button |
-| `viewDay` / `viewWeek` / `viewMonth` / `viewList` | Day / Week / Month / List | View switcher |
-| `fillData` | Fill Data | Create dialog |
-| `next` | Next | Create dialog (with `onNext`) |
-| `cancel` | Cancel | Create dialog |
-| `close` | Close | Edit dialog |
-| `publishEvent` | Publish Event | Create dialog |
-| `saveReminder` | Save Reminder | Reminder dialog |
-| `saveChanges` | Save Changes | Edit dialog |
-| `edit` | Edit | Reminder panel |
-| `editEvent` | Edit Event | Event panel |
-| `cancelEvent` | Cancel Event | Event panel, edit dialog |
-| `confirmCancelEvent` | Yes, Cancel Event | Cancel dialog |
-| `editDateInstead` | Edit date instead | Cancel dialog ("Postponed") |
-| `delete` | Delete | Reminder panel, edit dialog, confirm |
-| `deletePermanently` | Delete permanently | Cancelled event |
-| `deleteRepeatsToo` | This and later | Deleting a repeating reminder |
-| `remindMe` | Remind me | Someone else's event |
-| `goToEvent` | Go to the event | Nudge panel |
-| `openLink` | Open link | Online location |
-| `updateReminder` | Update reminder | Reminder whose event moved |
-| `goBack` | Go Back | Confirm and cancel dialogs |
-| `done` | Done | Sync dialog |
-| `retry` | Retry | Error state |
-| `syncDescription` | See these events in Google Calendar or Outlook… | Sync dialog |
+| — | `title` | Calendar |
+| `toolbar` | `newEvent` / `addReminder` | New Event / Add Reminder (create button, by permission) |
+| | `sync`, `deleteAll` | Sync, Delete all |
+| | `viewDay`, `viewWeek`, `viewMonth`, `viewList` | Day, Week, Month, List |
+| `dayJump` | `today` | Today |
+| `entryDialog` | `createEventTitle`, `editEventTitle` | Create New Event, Edit Event |
+| | `addReminderTitle`, `editReminderTitle` | Add Reminder, Edit Reminder |
+| | `myReminder` | My Reminder (type picker) |
+| | `fillData`, `next`, `cancel`, `close` | Fill Data, Next, Cancel, Close |
+| | `publishEvent`, `saveReminder`, `saveChanges` | Publish Event, Save Reminder, Save Changes |
+| | `cancelEvent`, `delete` | Cancel Event, Delete |
+| `eventPanel` | `edit`, `editEvent`, `cancelEvent` | Edit, Edit Event, Cancel Event |
+| | `delete`, `deletePermanently` | Delete, Delete permanently |
+| | `remindMe`, `goToEvent`, `openLink`, `updateReminder` | Remind me, Go to the event, Open link, Update reminder |
+| `cancelDialog` | `confirmCancelEvent`, `editDateInstead`, `goBack` | Yes, Cancel Event · Edit date instead · Go Back |
+| `confirmDialog` | `delete`, `deleteAll`, `deletePermanently` | Delete, Delete all, Delete permanently |
+| | `deleteRepeatsToo`, `goBack` | This and later, Go Back |
+| `syncDialog` | `title` | Sync with your calendar |
+| | `addTo`, `what`, `range` | (screen-reader names of the rows) |
+| | `events`, `deadlines`, `reminders`, `cancelled` | Events, Deadlines, My reminders, Cancelled events |
+| | `from`, `to`, `ago`, `fromNow`, `today` | From [1 month ago] to [1 year from now]; "Today" for 0 days |
+| | `copyLink`, `copy`, `copied` | Copy your calendar link, Copy, Copied |
+| | `addButton` | Add to — the button reads "Add to Google Calendar" for the chosen app |
+| `state` | `retry` | Retry |
 
 `createLabel` overrides only the create button, whichever text it would show.
 

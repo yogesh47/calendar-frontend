@@ -153,35 +153,35 @@ const EventDetailPanel = ({
   const defaults = isNudge ? (
     draft.linkedId && draft.linkedType === 'event' ? (
       <Button variant="outline" onClick={onOpenLinked}>
-        {labels.goToEvent}
+        {labels.eventPanel.goToEvent}
       </Button>
     ) : null
   ) : isCancelled ? (
     isMine ? (
       <Button variant="outline" onClick={onDeleteForever}>
         <Trash2 className="size-4" />
-        {labels.deletePermanently}
+        {labels.eventPanel.deletePermanently}
       </Button>
     ) : null
   ) : isReminder ? (
     <>
       <Button variant="outline" onClick={onDelete}>
         <Trash2 className="size-4" />
-        {labels.delete}
+        {labels.eventPanel.delete}
       </Button>
-      <Button onClick={onEdit}>{labels.edit}</Button>
+      <Button onClick={onEdit}>{labels.eventPanel.edit}</Button>
     </>
   ) : onRemindMe ? (
     <Button variant="outline" onClick={onRemindMe}>
       <BellPlus className="size-4" />
-      {labels.remindMe}
+      {labels.eventPanel.remindMe}
     </Button>
   ) : isMine && !hasEnded ? (
     <>
       <Button variant="outline" onClick={onCancel}>
-        {labels.cancelEvent}
+        {labels.eventPanel.cancelEvent}
       </Button>
-      <Button onClick={onEdit}>{labels.editEvent}</Button>
+      <Button onClick={onEdit}>{labels.eventPanel.editEvent}</Button>
     </>
   ) : null
 
@@ -272,7 +272,7 @@ const EventDetailPanel = ({
                 (isLink(location) ? (
                   <Button asChild variant="link" className="h-auto gap-1 p-0 text-sm">
                     <a href={location} target="_blank" rel="noreferrer">
-                      {labels.openLink}
+                      {labels.eventPanel.openLink}
                       <ExternalLink className="size-3.5" />
                     </a>
                   </Button>
@@ -294,7 +294,7 @@ const EventDetailPanel = ({
                 {LINKED_EVENT_MOVED(format(new Date(`${linkedEvent.draft.eventDate}T00:00:00`), 'EEE, MMM d, yyyy'))}
                 {onUpdateReminderDate && (
                   <Button variant="link" className="h-auto p-0 text-sm font-semibold" onClick={onUpdateReminderDate}>
-                    {labels.updateReminder}
+                    {labels.eventPanel.updateReminder}
                   </Button>
                 )}
               </p>

@@ -11,6 +11,8 @@ import {
   deleteAllEvents,
   deleteReminder,
   fetchFeedLink,
+  fetchSyncSettings,
+  saveSyncSettings,
   imageSrc,
   updateEvent,
 } from '../../services/api'
@@ -33,6 +35,7 @@ import type {
   CalendarEvent,
   CalendarHandle,
   CalendarNotice,
+  CalendarSyncSettings,
   DayEntry,
   EventActionContext,
   EventDraft,
@@ -149,6 +152,18 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
 
   const feedLink = () =>
     fetchFeedLink().catch((error) => {
+      showError(messageOf(error))
+      throw error
+    })
+
+  const syncSettings = () =>
+    fetchSyncSettings().catch((error) => {
+      showError(messageOf(error))
+      throw error
+    })
+
+  const changeSyncSettings = (settings: CalendarSyncSettings) =>
+    saveSyncSettings(settings).catch((error) => {
       showError(messageOf(error))
       throw error
     })
@@ -307,6 +322,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
         onDelete={remove}
         onDeleteAll={isTpo ? removeAll : undefined}
         getFeedLink={feedLink}
+        getSyncSettings={syncSettings}
+        onSyncSettingsChange={changeSyncSettings}
         resolveImageUrl={imageSrc}
         onNotice={sayNotice}
         onNext={(draft) => setPublishing(draft as TpoDraft)}

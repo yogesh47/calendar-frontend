@@ -17,8 +17,8 @@ import SyncDialog from './components/SyncDialog'
 import { EMPTY_DRAFT, newDraftOn, newReminderOn } from './helpers/drafts'
 import { onOpenEventRequest, takePendingOpen } from './services/store'
 import CalendarProvider from './CalendarProvider'
-import { DEFAULT_LABELS } from './labels'
-import type { CalendarLabels } from './labels'
+import { mergeLabels } from './labels'
+import type { CalendarLabels, CalendarLabelsInput } from './labels'
 import type { CalendarIcons } from './icons'
 import { itemFromEvent, kindOf } from './helpers'
 import { LIMITS } from './constants'
@@ -27,7 +27,7 @@ import { DEFAULT_CANCEL_REASONS } from './Calendar.constants'
 import type { DayEntry } from './Calendar.types'
 import type { CalendarView } from './types'
 import { REMINDER_TYPE } from './types'
-import type { CalendarEvent, CalendarEventType, EventDraft } from './types'
+import type { CalendarEvent, CalendarEventType, CalendarSyncSettings, EventDraft } from './types'
 import type { CancelReasonOption } from './components/CalendarDialogs/components/CancelDialog'
 
 const ALL_VIEWS: CalendarView[] = ['day', 'week', 'month', 'list']
@@ -103,6 +103,10 @@ export interface CalendarProps {
   onDeleteAll?: () => Promise<{ count: number }>
   /** The user's calendar-subscription link. Leave out to hide "Sync". */
   getFeedLink?: () => Promise<string>
+  /** This person's sync choices. With `onSyncSettingsChange`, the Sync dialog lets them change what is synced. */
+  getSyncSettings?: () => Promise<CalendarSyncSettings>
+  /** Save new sync choices. Reject to keep the old ones (the app reports the failure). */
+  onSyncSettingsChange?: (settings: CalendarSyncSettings) => Promise<unknown>
   /** Turns an event's stored image path into a URL the browser can load. */
   resolveImageUrl?: (path: string) => string
   /** Something the user should hear about — the app words it and shows it its own way. */
@@ -110,7 +114,7 @@ export interface CalendarProps {
   /** The app's own icons, by name; any left out stay the calendar's defaults (lucide). */
   icons?: Partial<CalendarIcons>
   /** The app's own words for the calendar's buttons and titles; any left out keep the defaults. */
-  labels?: Partial<CalendarLabels>
+  labels?: CalendarLabelsInput
   title?: string
   /**
     What this user may do. An app turns its own roles into these. Editing,
@@ -193,6 +197,8 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
     onDelete,
     onDeleteAll,
     getFeedLink,
+    getSyncSettings,
+    onSyncSettingsChange,
     resolveImageUrl = (path: string) => path,
     onNotice = () => undefined,
     icons,
@@ -209,7 +215,7 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
   const [kinds, setKinds] = useState<string[]>([])
   const canCreateEvents = Boolean(permissions.createEvents)
   const canCreate = canCreateEvents || permissions.createReminders !== false
-  const words = useMemo<CalendarLabels>(() => ({ ...DEFAULT_LABELS, ...labels }), [labels])
+  const words = useMemo<CalendarLabels>(() => mergeLabels(labels), [labels])
   // A new event opens on the app's first type unless the app says otherwise.
   const blank = useMemo<EventDraft>(
     () => ({ ...EMPTY_DRAFT, eventType: eventTypes[0]?.value ?? '', ...draftDefaults }) as EventDraft,
@@ -499,7 +505,7 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
             isMobile={isMobile}
             view={view}
             views={views}
-            viewLabels={VIEW_LABELS.map((entry) => ({ ...entry, label: words[VIEW_WORD[entry.id]] }))}
+            viewLabels={VIEW_LABELS.map((entry) => ({ ...entry, label: words.toolbar[VIEW_WORD[entry.id]] }))}
             selectedDay={selectedDay}
             dayCount={dayCount}
             rangeLabel={rangeLabel}
@@ -566,7 +572,7 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
       {showCreate && canCreate && (
       <button
         type="button"
-        aria-label={createLabel ?? (canCreateEvents ? words.newEvent : words.addReminder)}
+        aria-label={createLabel ?? (canCreateEvents ? words.toolbar.newEvent : words.toolbar.addReminder)}
         onClick={() =>
           askForCreate(format(selectedDay, 'yyyy-MM-dd'))
         }
@@ -626,6 +632,8 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
         <SyncDialog
           open={syncing}
           getFeedLink={getFeedLink}
+          getSyncSettings={getSyncSettings}
+          onSyncSettingsChange={onSyncSettingsChange}
           onNotice={onNotice}
           calendarName={title ?? words.title}
           onClose={() => setSyncing(false)}

@@ -114,7 +114,7 @@ const DayJump = ({ date, label, className, onDateChange }: DayJumpProps) => {
             {format(day, 'EEE, MMM d, yyyy')}
           </span>
           <Button variant="link" className="h-auto p-0 text-sm" onClick={() => pick(new Date())}>
-            {labels.today}
+            {labels.dayJump.today}
           </Button>
         </div>
       </PopoverContent>

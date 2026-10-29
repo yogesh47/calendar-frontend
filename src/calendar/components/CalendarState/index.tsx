@@ -28,7 +28,7 @@ export const CalendarError = ({ message, onRetry }: { message: string; onRetry: 
     <p className="text-sm font-semibold">{message}</p>
     <Button variant="outline" size="sm" onClick={onRetry}>
       <RefreshCw className="size-4" />
-      {labels.retry}
+      {labels.state.retry}
     </Button>
   </Shell>
   )

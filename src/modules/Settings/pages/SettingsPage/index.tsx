@@ -143,6 +143,43 @@ const SettingsPage = () => {
           </div>
         </Section>
 
+        <Section title={SETTINGS_COPY.syncSection}>
+          <p className="text-xs [color:var(--ds-color-text-secondary)]">{SETTINGS_COPY.syncHint}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {NUMBER_FIELDS.slice(4).map((field) => (
+              <Input
+                key={field.key}
+                type="number"
+                min={field.min}
+                max={field.max}
+                step={1}
+                label={field.label}
+                hint={field.hint}
+                value={Number.isNaN(settings[field.key]) ? '' : String(settings[field.key])}
+                error={errors[field.key]}
+                onChange={(event) => setNumber(field.key)(event.target.value)}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Include cancelled events</p>
+              <p className="text-xs [color:var(--ds-color-text-secondary)]">
+                Shown as "Cancelled: …" so people see the change. Off: they disappear from synced calendars.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={settings.feedShowCancelled ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => setSettings({ ...settings, feedShowCancelled: !settings.feedShowCancelled })}
+            >
+              {settings.feedShowCancelled ? 'On' : 'Off'}
+            </Button>
+          </div>
+        </Section>
+
         <Section title={SETTINGS_COPY.limitSection}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input

@@ -78,7 +78,7 @@ const CalendarToolbar = (props: CalendarToolbarProps) => {
         }
       >
         <Plus className="size-3.5" />
-        {createLabel ?? (canCreateEvents ? labels.newEvent : labels.addReminder)}
+        {createLabel ?? (canCreateEvents ? labels.toolbar.newEvent : labels.toolbar.addReminder)}
       </Button>
       )}
       <span className="flex items-center">
@@ -115,19 +115,19 @@ const CalendarToolbar = (props: CalendarToolbarProps) => {
 
     <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2">
     <span className="ml-auto flex items-center gap-1.5 sm:ml-0 sm:contents">
-    {onSync && (
-      <Button variant="outline" size="sm" aria-label="Sync calendar" onClick={onSync}>
-        <RefreshCw className="size-4" />
-        <span className="hidden sm:inline">{labels.sync}</span>
-      </Button>
-    )}
     {canCreateEvents && showDeleteAll && (
       <Button variant="outline" size="sm" aria-label="Delete all" onClick={() => onWipe()}>
         <Trash2 className="size-4" />
-        <span className="hidden sm:inline">{labels.deleteAll}</span>
+        <span className="hidden sm:inline">{labels.toolbar.deleteAll}</span>
       </Button>
     )}
     {toolbarExtras}
+    {onSync && (
+      <Button variant="outline" size="sm" aria-label="Sync calendar" onClick={onSync}>
+        <RefreshCw className="size-4" />
+        <span className="hidden sm:inline">{labels.toolbar.sync}</span>
+      </Button>
+    )}
     </span>
     <div className="flex w-full items-center gap-1 rounded-lg border p-1 sm:w-auto">
       {viewLabels.filter((entry) => views.includes(entry.id)).map((entry) =>

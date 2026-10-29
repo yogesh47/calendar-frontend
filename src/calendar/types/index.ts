@@ -11,6 +11,19 @@ export type ItemStatus = 'active' | 'cancelled' | 'updated' | 'not_applicable' |
 
 export type CalendarView = 'day' | 'month' | 'week' | 'list'
 
+/** What one person's calendar sync carries to Google / Outlook. */
+export type CalendarSyncSettings = {
+  /** Days before today. */
+  pastDays: number
+  /** Days after today. */
+  futureDays: number
+  events: boolean
+  deadlines: boolean
+  reminders: boolean
+  /** Cancelled events, titled "Cancelled: …". */
+  cancelled: boolean
+}
+
 export type RemindBefore = 'none' | 'at_time' | '15_min' | '1_hour' | '1_day'
 
 export type RepeatFrequency = 'daily' | 'weekly' | 'monthly'

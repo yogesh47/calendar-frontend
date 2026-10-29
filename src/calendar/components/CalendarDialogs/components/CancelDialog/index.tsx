@@ -136,7 +136,7 @@ const CancelDialog = ({
                       <Info className="size-3.5" />
                       You can edit the date instead of cancelling.
                       <Button variant="link" className="text-sm" onClick={onEditDate}>
-                        {labels.editDateInstead}
+                        {labels.cancelDialog.editDateInstead}
                       </Button>
                     </p>
                   )}
@@ -162,10 +162,10 @@ const CancelDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={onBack}>
-            {labels.goBack}
+            {labels.cancelDialog.goBack}
           </Button>
           <Button variant="danger" disabled={!form.isValid || !form.values.reason} onClick={() => form.handleSubmit()}>
-            {labels.confirmCancelEvent}
+            {labels.cancelDialog.confirmCancelEvent}
           </Button>
         </DialogFooter>
       </DialogContent>
