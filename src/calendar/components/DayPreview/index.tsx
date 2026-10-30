@@ -1,0 +1,373 @@
+import { useEffect, useRef, useState } from 'react'
+import { addDays, format, isToday, subDays } from 'date-fns'
+
+import DayJump from '../DayJump'
+import { cn } from '../../lib/utils'
+import { overlaps } from '../../helpers/conflicts'
+import type { DayEntry } from '../../Calendar.types'
+import { CalendarDays, ChevronLeft, ChevronRight } from '../../icons'
+
+export interface DayPreviewProps {
+  date: string
+  startTime: string
+  endTime: string
+  title: string
+  entries: DayEntry[]
+  onDateChange: (date: string) => void
+  onTimeChange?: (startTime: string, endTime: string) => void
+}
+
+const HOUR_HEIGHT = 2.5
+
+const STEP = 30
+
+const DAY_MINUTES = 24 * 60
+
+const minutesOf = (value: string): number => {
+  const [hour, minute] = value.split(':').map(Number)
+  return hour * 60 + (minute || 0)
+}
+
+const clockOf = (minutes: number): string =>
+  `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+
+const labelOf = (minutes: number): string =>
+  format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), 'h:mm a')
+
+const hourLabel = (hour: number): string => format(new Date(2000, 0, 1, hour), 'h a')
+
+const shiftDay = (date: string, days: number): string =>
+  format(days > 0 ? addDays(new Date(`${date}T00:00:00`), days) : subDays(new Date(`${date}T00:00:00`), -days), 'yyyy-MM-dd')
+
+const clamp = (value: number, low: number, high: number): number => Math.min(Math.max(value, low), high)
+
+/** The id the block being edited is laid out under, beside the day's other items. */
+const DRAFT = '__draft'
+
+type Span = { id: string; start: number; end: number }
+
+// From–to in minutes; no end reads as half an hour, an end past midnight runs to the day's end.
+const spanOf = (id: string, from: string, to: string): Span => {
+  const start = minutesOf(from)
+  const end = to ? minutesOf(to) : start + STEP
+  return { id, start, end: end > start ? end : DAY_MINUTES }
+}
+
+/*
+  Side by side, as a calendar app draws them: items that overlap — directly or
+  through a chain — share a group, each takes the first free lane, and every
+  item in the group is as wide as the group has lanes. Nothing hides behind the
+  block being edited.
+*/
+const lanesOf = (spans: Span[]): Map<string, { lane: number; lanes: number }> => {
+  const placed = new Map<string, { lane: number; lanes: number }>()
+  // The block being edited goes first among items starting together, so it sits leftmost.
+  const sorted = [...spans].sort(
+    (a, b) => a.start - b.start || Number(b.id === DRAFT) - Number(a.id === DRAFT) || b.end - a.end,
+  )
+  let group: { span: Span; lane: number }[] = []
+  let laneEnds: number[] = []
+  let groupEnd = -1
+
+  const close = () => {
+    group.forEach(({ span, lane }) => placed.set(span.id, { lane, lanes: laneEnds.length }))
+    group = []
+    laneEnds = []
+    groupEnd = -1
+  }
+
+  for (const span of sorted) {
+    if (group.length && span.start >= groupEnd) close()
+    let lane = laneEnds.findIndex((end) => end <= span.start)
+    if (lane === -1) {
+      lane = laneEnds.length
+      laneEnds.push(span.end)
+    } else {
+      laneEnds[lane] = span.end
+    }
+    group.push({ span, lane })
+    groupEnd = Math.max(groupEnd, span.end)
+  }
+  close()
+
+  return placed
+}
+
+const DayPreview = ({ date, startTime, endTime, title, entries, onDateChange, onTimeChange }: DayPreviewProps) => {
+  const scroller = useRef<HTMLDivElement>(null)
+  const grid = useRef<HTMLDivElement>(null)
+  // What the pointer is holding: an edge (resize) or the whole block (move).
+  const edge = useRef<'start' | 'end' | 'move' | null>(null)
+  // Where in the block it was picked up, so a move keeps that spot under the pointer.
+  const grabOffset = useRef(0)
+  const dragged = useRef(false)
+  const [now, setNow] = useState(new Date())
+  const [hover, setHover] = useState<number | null>(null)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!scroller.current) return
+    const anchor = startTime || format(new Date(), 'HH:mm')
+    scroller.current.scrollTop = Math.max(((minutesOf(anchor) - 60) / 60) * HOUR_HEIGHT * 16, 0)
+  }, [startTime, date])
+
+  // Minutes into the day under the pointer, not snapped.
+  const rawMinutesAt = (clientY: number): number => {
+    if (!grid.current) return 0
+    const bounds = grid.current.getBoundingClientRect()
+    return ((clientY - bounds.top) / bounds.height) * DAY_MINUTES
+  }
+
+  const minutesAt = (clientY: number, round: boolean): number => {
+    if (!grid.current) return 0
+    const raw = rawMinutesAt(clientY)
+    const snapped = round ? Math.round(raw / STEP) * STEP : Math.floor(raw / STEP) * STEP
+    return clamp(snapped, 0, DAY_MINUTES)
+  }
+
+  useEffect(() => {
+    if (!onTimeChange) return
+
+    const move = (event: PointerEvent) => {
+      if (!edge.current) return
+      dragged.current = true
+      const minutes = minutesAt(event.clientY, true)
+      const start = minutesOf(startTime || '09:00')
+      const end = minutesOf(endTime || clockOf(start + 60))
+
+      if (edge.current === 'move') {
+        // The whole block slides; its length stays, and it stays inside the day.
+        const span = endTime ? end - start : STEP
+        const next = clamp(Math.round((rawMinutesAt(event.clientY) - grabOffset.current) / STEP) * STEP, 0, DAY_MINUTES - span)
+        onTimeChange(clockOf(next), endTime ? clockOf(Math.min(next + span, DAY_MINUTES - 1)) : '')
+        return
+      }
+
+      if (edge.current === 'start') onTimeChange(clockOf(clamp(minutes, 0, end - STEP)), clockOf(end))
+      else onTimeChange(clockOf(start), clockOf(clamp(minutes, start + STEP, DAY_MINUTES - 1)))
+    }
+
+    const stop = () => {
+      if (!edge.current) return
+      edge.current = null
+      document.body.style.cursor = ''
+      window.setTimeout(() => {
+        dragged.current = false
+      }, 0)
+    }
+
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', stop)
+    window.addEventListener('pointercancel', stop)
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', stop)
+      window.removeEventListener('pointercancel', stop)
+    }
+  }, [onTimeChange, startTime, endTime])
+
+  if (!date) return null
+
+  const onThisDay = entries.filter((entry) => entry.eventDate === date && entry.startTime)
+
+  const lanes = lanesOf([
+    ...onThisDay.map((entry) => spanOf(entry.id, entry.startTime, entry.endTime)),
+    ...(startTime ? [spanOf(DRAFT, startTime, endTime)] : []),
+  ])
+
+  // Left and width for one item's lane, with a hairline gap between lanes.
+  const lane = (id: string) => {
+    const { lane: index, lanes: count } = lanes.get(id) ?? { lane: 0, lanes: 1 }
+    const width = 100 / count
+    return { left: `calc(${index * width}% + 0.25rem)`, width: `calc(${width}% - 0.375rem)` }
+  }
+
+  const pickSlot = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!onTimeChange || dragged.current) return
+
+    const start = minutesAt(event.clientY, false)
+    const span = startTime && endTime ? Math.max(minutesOf(endTime) - minutesOf(startTime), STEP) : 60
+    onTimeChange(clockOf(clamp(start, 0, DAY_MINUTES - STEP)), clockOf(clamp(start + span, STEP, DAY_MINUTES - 1)))
+  }
+
+  const grab = (which: 'start' | 'end') => (event: React.PointerEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    edge.current = which
+    document.body.style.cursor = 'ns-resize'
+  }
+
+  // Picking the block up anywhere but its edges moves it.
+  const pickUp = (event: React.PointerEvent) => {
+    if (!onTimeChange || !startTime) return
+    event.preventDefault()
+    event.stopPropagation()
+    grabOffset.current = rawMinutesAt(event.clientY) - minutesOf(startTime)
+    edge.current = 'move'
+    setHover(null)
+    document.body.style.cursor = 'grabbing'
+  }
+
+  const block = (from: string, to: string) => {
+    const start = minutesOf(from)
+    const end = to ? minutesOf(to) : start
+    const span = !to ? STEP : end > start ? end - start : DAY_MINUTES - start
+
+    return {
+      top: `${(start / 60) * HOUR_HEIGHT}rem`,
+      height: `${Math.max((span / 60) * HOUR_HEIGHT, 1.25)}rem`,
+    }
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border [background-color:var(--ds-color-bg-surface)]">
+      <div className="flex items-center justify-between gap-2 border-b px-2 py-1.5 [background-color:var(--ds-color-bg-subtle)]">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Previous day"
+            onClick={() => onDateChange(shiftDay(date, -1))}
+            className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <CalendarDays className="size-3.5 [color:var(--ds-color-text-secondary)]" />
+          <button
+            type="button"
+            aria-label="Next day"
+            onClick={() => onDateChange(shiftDay(date, 1))}
+            className="grid size-6 cursor-pointer place-items-center rounded [color:var(--ds-color-text-secondary)] hover:[background-color:var(--ds-color-bg-muted)]"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+        <DayJump date={date} onDateChange={onDateChange} />
+      </div>
+
+      <div ref={scroller} data-day-preview className="min-h-0 flex-1 overflow-y-auto">
+        <div className="relative grid grid-cols-[3rem_1fr]">
+          <div>
+            {Array.from({ length: 24 }, (_, hour) => (
+              <div
+                key={hour}
+                className="border-b border-r px-1.5 text-xs [color:var(--ds-color-text-tertiary)]"
+                style={{ height: `${HOUR_HEIGHT}rem` }}
+              >
+                {hourLabel(hour)}
+              </div>
+            ))}
+          </div>
+
+          <div
+            ref={grid}
+            className={cn('relative', onTimeChange && 'cursor-pointer')}
+            onClick={pickSlot}
+            onMouseMove={(event) => {
+              if (!onTimeChange) return
+              const minutes = minutesAt(event.clientY, false)
+              const start = startTime ? minutesOf(startTime) : null
+              const end = endTime ? minutesOf(endTime) : null
+              const inBlock = start !== null && end !== null && minutes >= start && minutes < end
+              setHover(inBlock ? null : minutes)
+            }}
+            onMouseLeave={() => setHover(null)}
+          >
+            {Array.from({ length: 24 }, (_, hour) => (
+              <div key={hour} className="border-b" style={{ height: `${HOUR_HEIGHT}rem` }}>
+                <div className="h-1/2 border-b border-dashed [border-color:var(--ds-color-border-default)]" />
+              </div>
+            ))}
+
+            {hover !== null && !edge.current && (
+              <div
+                // Above the events and the picked block, so it is never hidden behind them.
+                className="pointer-events-none absolute left-0 right-0 z-30 flex -translate-y-1/2 items-center gap-1"
+                style={{ top: `${(hover / 60) * HOUR_HEIGHT}rem` }}
+              >
+                <span className="rounded px-1 text-[0.625rem] font-semibold [background-color:var(--ds-color-bg-inverse)] [color:var(--ds-color-text-inverse)]">
+                  {labelOf(hover)}
+                </span>
+                <span className="h-px flex-1 border-t border-dashed [border-color:var(--ds-color-border-strong)]" />
+              </div>
+            )}
+
+            {onThisDay.map((entry) => {
+              const clash = Boolean(startTime) && overlaps(startTime, endTime, entry.startTime, entry.endTime)
+
+              return (
+                <div
+                  key={entry.id}
+                  title={`${entry.title} · ${labelOf(minutesOf(entry.startTime))}${entry.endTime ? ` – ${labelOf(minutesOf(entry.endTime))}` : ''}`}
+                  className={cn(
+                    'absolute z-[15] overflow-hidden rounded px-1.5 py-0.5 text-xs',
+                    clash
+                      ? 'border [border-color:var(--ds-color-warning)] [background-color:var(--ds-color-warning-subtle)] [color:var(--ds-color-warning-text)]'
+                      : '[background-color:var(--ds-color-bg-muted)] [color:var(--ds-color-text-secondary)]',
+                  )}
+                  style={{ ...block(entry.startTime, entry.endTime), ...lane(entry.id) }}
+                >
+                  <span className="block truncate">{entry.title}</span>
+                </div>
+              )
+            })}
+
+            {isToday(new Date(`${date}T00:00:00`)) && (
+              <div
+                className="pointer-events-none absolute left-0 right-0 z-10 flex -translate-y-1/2 items-center"
+                style={{ top: `${((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_HEIGHT}rem` }}
+              >
+                <span className="size-1.5 rounded-full [background-color:var(--ds-color-danger)]" />
+                <span className="h-px flex-1 [background-color:var(--ds-color-danger)]" />
+              </div>
+            )}
+
+            {startTime && (
+              <div
+                className={cn(
+                  'absolute z-20 touch-none select-none rounded px-1.5 py-0.5 text-xs font-semibold [background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]',
+                  onTimeChange && 'cursor-grab active:cursor-grabbing',
+                )}
+                style={{ ...block(startTime, endTime), ...lane(DRAFT) }}
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={pickUp}
+              >
+                <span className="block truncate">
+                  {labelOf(minutesOf(startTime))}
+                  {endTime ? ` – ${labelOf(minutesOf(endTime))}` : ''}
+                </span>
+                <span className="block truncate">{title || 'New event'}</span>
+
+                {onTimeChange && (
+                  <>
+                    <span
+                      role="slider"
+                      aria-label="Change start time"
+                      aria-valuetext={labelOf(minutesOf(startTime))}
+                      tabIndex={-1}
+                      onPointerDown={grab('start')}
+                      className="absolute inset-x-0 top-0 h-2 cursor-ns-resize rounded-t hover:bg-white/40"
+                    />
+                    <span
+                      role="slider"
+                      aria-label="Change end time"
+                      aria-valuetext={labelOf(minutesOf(endTime || startTime))}
+                      tabIndex={-1}
+                      onPointerDown={grab('end')}
+                      className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize rounded-b hover:bg-white/40"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default DayPreview

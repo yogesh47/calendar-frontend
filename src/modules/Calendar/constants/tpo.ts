@@ -1,5 +1,6 @@
 import { EMPTY_DRAFT as CALENDAR_EMPTY_DRAFT } from '@/calendar'
-import type { CalendarEventType, CancelReasonOption } from '@/calendar'
+import type { CalendarEventType } from '@/calendar'
+import type { CancelReasonOption } from '../components/CancelEventDialog'
 import type { Audience, CalendarFilters, CancelReason, OpportunityType, TpoDraft, TpoEventType } from '../types/tpo'
 
 export const FINAL_YEAR_BATCH = 2027
@@ -164,6 +165,9 @@ export const CANCEL_REASONS: CancelReasonOption[] = [
 export const ASSESSMENT_EMAIL_NOTE = 'The test link will be sent to your registered email.'
 
 export const VENUE_LENGTH = 200
+
+/** May an event or a reminder be created on a past date? The calendar and the create form both follow it. */
+export const ALLOW_PAST_DATES = false
 
 export const OTHER_TYPE_LENGTH = 80
 

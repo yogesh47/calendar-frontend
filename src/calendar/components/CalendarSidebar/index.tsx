@@ -1,6 +1,7 @@
 import { startOfWeek } from 'date-fns'
-import MiniCalendar from '../MiniCalendar'
+
 import Legend from './components/Legend'
+import MiniCalendar from '../MiniCalendar'
 import type { CalendarView } from '../../types'
 
 interface CalendarSidebarProps {

@@ -1,4 +1,4 @@
-import type { Audience, AudienceDiff } from '@/modules/Calendar/types/tpo'
+import type { Audience } from '@/modules/Calendar/types/tpo'
 
 const groupSize = (course: string, batch: number, department: string): number => {
   const seed = [...`${course}${batch}${department}`].reduce((sum, letter) => sum + letter.charCodeAt(0), 0)
@@ -24,25 +24,3 @@ export const studentsIn = (groups: string[]): number =>
   }, 0)
 
 export const countAudience = (audience: Audience): number => studentsIn(groupsIn(audience))
-
-export const groupLabel = (group: string): string => {
-  const [course, , department] = group.split('|')
-  return `${course} → ${department}`
-}
-
-export const diffAudience = (before: Audience, after: Audience): AudienceDiff => {
-  const old = groupsIn(before)
-  const next = groupsIn(after)
-  const keptGroups = next.filter((group) => old.includes(group))
-  const addedGroups = next.filter((group) => !old.includes(group))
-  const removedGroups = old.filter((group) => !next.includes(group))
-
-  return {
-    kept: studentsIn(keptGroups),
-    added: studentsIn(addedGroups),
-    removed: studentsIn(removedGroups),
-    keptGroups,
-    addedGroups,
-    removedGroups,
-  }
-}

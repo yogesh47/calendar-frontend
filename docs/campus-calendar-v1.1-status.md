@@ -1,5 +1,16 @@
 # Campus Calendar v1.1 — what is done, what is not
 
+> **Note (2026-10-30):** this is a historical report and is kept as written. The
+> `<Calendar onNext … onDayEntries />` / ref second-step design it shows (the
+> calendar opening `CalendarEntryDialog` and `CalendarDialogs` itself) has since
+> been replaced by the **headless calendar**: `src/calendar` only draws and tells
+> through callbacks (`onViewEvent`, `onCreateRequest`, `onDeleteAllRequest`,
+> `onSyncRequest`, `onNotice`), and every modal is the app's own
+> (`src/modules/Calendar/components/` — `EventEntryDialog`, `PublishEventDialog`,
+> `EventDetailModal`, `CancelEventDialog`, `ConfirmDialog`, `SyncDialog`, `AudienceDialog`),
+> shown by `pages/CalendarPage`. Current usage: `src/calendar/README.md`
+> (= `docs/calendar-usage.md`).
+
 The demo review agreed seven changes. This is where each one stands today, with
 the code that carries it, so the next person can pick up the unfinished ones
 without reading the whole repo first.

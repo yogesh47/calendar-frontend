@@ -1,6 +1,6 @@
 import { cn } from '../../../../lib/utils'
-import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '../../../../constants'
 import type { CalendarItemKind } from '../../../../types'
+import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE } from '../../../../constants'
 
 export interface LegendProps {
   selected: string[]

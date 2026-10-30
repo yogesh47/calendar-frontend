@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { ComponentType, SVGProps } from 'react'
 import {
   AlignLeft as LucideAlignLeft,
   Bell as LucideBell,
@@ -30,7 +31,6 @@ import {
   Wand2 as LucideWand2,
   X as LucideX,
 } from 'lucide-react'
-import type { ComponentType, SVGProps } from 'react'
 
 /*
   Every icon the calendar draws, in one place. The defaults are lucide; an app

@@ -1,6 +1,6 @@
 import { addDays, format } from 'date-fns'
 import { useEffect, useState } from 'react'
-import { CalendarPlus, Link2, Lock, Trash2, TriangleAlert, Wand2, X } from 'lucide-react'
+import { CalendarPlus, Link2, Lock, Trash2, Wand2, X } from 'lucide-react'
 import { useFormik } from 'formik'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Input'
@@ -9,14 +9,9 @@ import { Button } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { Combobox } from '@/components/ui/MultiSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/Dialog'
+import { Dialog, DialogContent } from '@/components/ui/Dialog'
+import { ModalBody, ModalFooter, ModalHeader, modalContentClass } from '@/modules/Calendar/components/Modal'
+import ClashWarning from '../ClashWarning'
 import LinkJobDialog from './components/LinkJobDialog'
 import { overlaps } from '@/calendar'
 import { labelFor, rulesFor } from '../../helpers/tpo'
@@ -26,7 +21,7 @@ import { countAudience } from '../../services/audience'
 import { EVENT_TYPE_OPTIONS, FINAL_YEAR_BATCH, OTHER_TYPE_LENGTH, REMINDER_PRIVACY, VENUE_LENGTH } from '../../constants/tpo'
 import { COMPANY_OPTIONS } from '../../constants'
 import { MODE_OPTIONS } from './PublishEventDialog.constants'
-import { InfoNote, Required, Section, clock } from '../parts'
+import { InfoNote, Required, Section } from '../parts'
 import type { DayEntry } from '@/calendar'
 import type { TpoDraft, TpoEventType, EventMode, LinkedJob } from '../../types/tpo'
 
@@ -45,7 +40,8 @@ interface PublishEventDialogProps {
   onCancelEvent?: () => void
   onDeleteReminder?: () => void
   onSave: (draft: TpoDraft) => void
-  onBack: () => void
+  /** Back to the first step — with what was filled in here, so Next brings it back. */
+  onBack: (draft: TpoDraft) => void
 }
 
 const PublishEventDialog = ({
@@ -218,78 +214,45 @@ const PublishEventDialog = ({
       {open && <div className="fixed inset-0 z-40 bg-black/50" aria-hidden />}
     <Dialog open={open} modal={false} onOpenChange={(next) => !next && close()}>
       <DialogContent
-        className={cn(
-          'max-h-[92vh] max-w-none grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:p-0 [background-color:var(--ds-color-bg-surface)]',
-          '[&>button]:top-5',
-          'w-[min(46rem,calc(100vw-1rem))]',
-        )}
+        className={modalContentClass('lg')}
         onInteractOutside={(event) => event.preventDefault()}
       >
         <form onSubmit={form.handleSubmit} noValidate className="contents">
-        <DialogHeader className="px-3 pb-3 pr-14 pt-4 text-left sm:px-4 sm:pr-16">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg [background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]">
-                <CalendarPlus className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <DialogTitle className="whitespace-nowrap">
-                  {isEdit ? 'Edit Event' : isReminder ? 'Add Reminder' : 'Publish Event'}
-                </DialogTitle>
-                {/*
-                  Title pehle modal me likha ja chuka hai, isliye yahan wo field
-                  ban kar nahi aata — par dikhna chahiye, warna banda bhool
-                  jaata hai ki wo kya publish kar raha hai.
-                */}
-                <DialogDescription className="truncate text-sm">
-                  {[
-                    draft.title || 'Untitled',
-                    !isReminder && (draft.eventType === 'other' && draft.otherType.trim() ? draft.otherType.trim() : labelFor(draft.eventType)),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </DialogDescription>
-              </div>
-            </div>
-
-            {!isEdit && (
+        {/*
+          Title pehle modal me likha ja chuka hai, isliye yahan wo field ban kar
+          nahi aata — par dikhna chahiye, warna banda bhool jaata hai ki wo kya
+          publish kar raha hai.
+        */}
+        <ModalHeader
+          icon={<CalendarPlus />}
+          title={isEdit ? 'Edit Event' : isReminder ? 'Add Reminder' : 'Publish Event'}
+          description={[
+            draft.title || 'Untitled',
+            !isReminder && (draft.eventType === 'other' && draft.otherType.trim() ? draft.otherType.trim() : labelFor(draft.eventType)),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          actions={
+            !isEdit && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 title="Fill Data"
                 aria-label="Fill Data"
-                className="shrink-0 px-2 sm:px-3"
+                className="px-2 sm:px-3"
                 onClick={fillDummy}
               >
                 <Wand2 className="size-3.5" />
                 <span className="hidden sm:inline">Fill Data</span>
               </Button>
-            )}
-          </div>
-        </DialogHeader>
+            )
+          }
+        />
 
-        <div
-          className={cn(
-            'grid min-w-0 grid-cols-[minmax(0,1fr)] max-h-[70vh] gap-3 overflow-hidden px-3 pb-4 pt-3 [background-color:var(--ds-color-bg-app)] sm:px-4',
-          )}
-        >
-          <div className="min-h-0 min-w-0 space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+        <ModalBody className="overflow-x-hidden">
           {/* Warnings first, outside the cards — they are about the whole event. */}
-          {clashes.length > 0 && onStepTwo && (
-            <p className="flex min-w-0 gap-2 rounded-lg border px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [border-color:var(--ds-color-warning)] [color:var(--ds-color-warning-text)]">
-              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-              <span className="min-w-0">
-                {clashes.length === 1
-                  ? '1 event clashes with this time'
-                  : `${clashes.length} events clash with this time`}
-                {': '}
-                {clashes
-                  .map((entry) => `${entry.title} (${clock(entry.startTime)} – ${clock(entry.endTime)})`)
-                  .join(', ')}
-              </span>
-            </p>
-          )}
+          {onStepTwo && <ClashWarning clashes={clashes} />}
 
           {isReminder && !reminderOnly && (
             <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
@@ -516,27 +479,22 @@ const PublishEventDialog = ({
               setLinking(false)
             }}
           />
-          </div>
+        </ModalBody>
 
-        </div>
-
-        <DialogFooter className="min-w-0 flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
-          {isEdit && !isReminder && onNotifyMinorChange ? (
-            <label className="flex min-w-0 cursor-pointer items-center gap-2 text-xs [color:var(--ds-color-text-secondary)] sm:text-sm">
-              <Checkbox checked={notifyMinor} onCheckedChange={(value: boolean | 'indeterminate') => onNotifyMinorChange(value === true)} />
-              Notify students about this change
-            </label>
-          ) : (
-          <span className="min-w-0 basis-full text-xs [color:var(--ds-color-text-secondary)] sm:flex-1 sm:basis-0 sm:text-sm">
-            {!rules.needsAudience || !onStepTwo || isEdit
-              ? ''
-              : count > 0
-                ? `${count} students will be notified`
-                : 'No audience selected yet'}
-          </span>
-          )}
-
-          <span className="ml-auto flex shrink-0 justify-end gap-2">
+        <ModalFooter
+          start={
+            isEdit && !isReminder && onNotifyMinorChange ? (
+              <label className="flex min-w-0 cursor-pointer items-center gap-2">
+                <Checkbox checked={notifyMinor} onCheckedChange={(value: boolean | 'indeterminate') => onNotifyMinorChange(value === true)} />
+                Notify students about this change
+              </label>
+            ) : !rules.needsAudience || !onStepTwo || isEdit ? undefined : count > 0 ? (
+              `${count} students will be notified`
+            ) : (
+              'No audience selected yet'
+            )
+          }
+        >
             {isEdit && canCancelEvent && !isReminder && (
               <Button type="button" variant="outline" onClick={onCancelEvent}>
                 Cancel Event
@@ -549,15 +507,14 @@ const PublishEventDialog = ({
                 Delete
               </Button>
             )}
-            <Button type="button" variant="outline" onClick={onBack}>
+            <Button type="button" variant="outline" onClick={() => onBack(form.values)}>
               Back
             </Button>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
             </Button>
             <Button type="submit">{isEdit ? 'Save Changes' : isReminder ? 'Save Reminder' : 'Publish Event'}</Button>
-          </span>
-        </DialogFooter>
+        </ModalFooter>
         </form>
       </DialogContent>
     </Dialog>

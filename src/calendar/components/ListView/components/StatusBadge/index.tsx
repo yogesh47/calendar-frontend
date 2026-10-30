@@ -1,7 +1,7 @@
 import { cn } from '../../../../lib/utils'
+import type { CalendarItem } from '../../../../types'
 import { STATUS_BADGE } from './StatusBadge.constants'
 import { isPast, isRecentlyUpdated } from '../../../../helpers'
-import type { CalendarItem } from '../../../../types'
 
 /**
  * Updated / Cancelled / No longer applicable / Past.

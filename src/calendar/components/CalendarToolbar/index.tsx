@@ -1,12 +1,13 @@
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus, RefreshCw, Trash2 } from '../../icons'
-import { format } from 'date-fns'
-import { cn } from '../../lib/utils'
-import { Button } from '../../shared/ui/Button'
-import { Popover, PopoverContent, PopoverTrigger } from '../../shared/ui/Popover'
-import DayJump from '../DayJump'
-import type { CalendarView } from '../../types'
 import type { ReactNode } from 'react'
+import { format } from 'date-fns'
+
+import DayJump from '../DayJump'
+import { cn } from '../../lib/utils'
 import { useLabels } from '../../labels'
+import { Button } from '../../shared/ui/Button'
+import type { CalendarView } from '../../types'
+import { Popover, PopoverContent, PopoverTrigger } from '../../shared/ui/Popover'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus, RefreshCw, Trash2 } from '../../icons'
 
 export interface CalendarToolbarProps {
   /** Creates events (otherwise only reminders). */

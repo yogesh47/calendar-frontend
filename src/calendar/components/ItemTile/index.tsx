@@ -1,7 +1,8 @@
 import { format } from 'date-fns'
+
 import { cn } from '../../lib/utils'
-import { isPast, isRecentlyUpdated, styleOf } from '../../helpers'
 import type { CalendarItem } from '../../types'
+import { isPast, isRecentlyUpdated, styleOf } from '../../helpers'
 
 export type ItemTileProps = {
   item: CalendarItem

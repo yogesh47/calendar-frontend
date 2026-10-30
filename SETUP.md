@@ -36,7 +36,8 @@ pip install -r requirements.txt
 cp .env.example .env
 
 make db-check                      # DB hai ya nahi
-make db-up                         # na ho to bana lo
+make db-up                         # na ho to bana lo; ho to naye migrations chala do
+                                   # (jaise calendar_event.other_type — har pull ke baad chalao)
 make run                           # API chalu
 ```
 
@@ -62,6 +63,22 @@ npm run dev -- --port 5180 --strictPort
 Kholo: **http://localhost:5180**
 
 > Port 5180 hi rakhna — backend ke `.env` me CORS isi port ke liye khula hai.
+
+### Calendar package (`src/calendar`)
+
+Calendar ka component **headless** hai — sirf dikhata hai aur callbacks se batata hai
+(`onViewEvent`, `onCreateRequest`, `onDeleteAllRequest`, `onSyncRequest`, `onNotice`).
+Koi modal, API call ya toast uske andar nahi; saare modals app ke apne hain
+(`src/modules/Calendar/components/`, `pages/CalendarPage` se khulte hain).
+
+`npm install` me sab aa jaata hai. Doosre repo me copy karo to package ko sirf ye
+chahiye: `react`, `date-fns`, `lucide-react`, `clsx`, `tailwind-merge`,
+`class-variance-authority`, `@radix-ui/react-popover`, `@radix-ui/react-slot`
+(+ dev: `tailwindcss@3`, `tailwindcss-animate`, `postcss`, `autoprefixer`).
+`formik`, `yup`, Tiptap, `react-hot-toast` waghaira **app** ke modals ke liye hain,
+package ke liye nahi.
+
+Poora use: [`src/calendar/README.md`](src/calendar/README.md) (= `docs/calendar-usage.md`).
 
 ---
 

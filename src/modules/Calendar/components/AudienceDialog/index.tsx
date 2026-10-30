@@ -2,14 +2,8 @@ import { useEffect, useState } from 'react'
 import { Info, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/Dialog'
+import { Dialog, DialogContent } from '@/components/ui/Dialog'
+import { ModalBody, ModalFooter, ModalHeader, modalContentClass } from '@/modules/Calendar/components/Modal'
 import { messageOf, showError, showSuccess } from '@/lib/toast'
 import { Section } from '../parts'
 import AudienceFields, { audienceIsComplete } from '../AudienceFields'
@@ -79,32 +73,21 @@ const AudienceDialog = ({ event, onClose, onSaved }: AudienceDialogProps) => {
       {event && <div className="fixed inset-0 z-40 bg-black/50" aria-hidden />}
       <Dialog open={Boolean(event)} modal={false} onOpenChange={(next) => !next && !isSaving && onClose()}>
         <DialogContent
-          className={cn(
-            'max-h-[92vh] w-[min(36rem,calc(100vw-1rem))] max-w-none grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:p-0 [background-color:var(--ds-color-bg-surface)]',
-            '[&>button]:top-5',
-          )}
+          className={modalContentClass('md')}
           onInteractOutside={(entry) => entry.preventDefault()}
         >
-          <DialogHeader className="px-3 pb-3 pr-14 pt-4 sm:px-4 sm:pr-16">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg [background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]">
-                  <Users className="size-5" />
-                </span>
-                <div className="min-w-0">
-                  <DialogTitle>Who should see this?</DialogTitle>
-                  <DialogDescription className="truncate text-sm">
-                    {event?.draft.title}
-                  </DialogDescription>
-                </div>
-              </div>
-              <Button type="button" variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" onClick={fillDummy}>
+          <ModalHeader
+            icon={<Users />}
+            title="Who should see this?"
+            description={event?.draft.title}
+            actions={
+              <Button type="button" variant="outline" size="sm" className="px-2 sm:px-3" onClick={fillDummy}>
                 Fill Data
               </Button>
-            </div>
-          </DialogHeader>
+            }
+          />
 
-          <div className="max-h-[65vh] space-y-3 overflow-y-auto px-3 pb-4 pt-3 [background-color:var(--ds-color-bg-app)] sm:px-4">
+          <ModalBody>
             {event?.seriesId && (
               <p className="flex gap-2 rounded-lg border px-3 py-2 text-sm [color:var(--ds-color-text-secondary)]">
                 <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -115,9 +98,10 @@ const AudienceDialog = ({ event, onClose, onSaved }: AudienceDialogProps) => {
             <Section title="Target Audience">
               <AudienceFields value={audience} showErrors={showErrors} onChange={setAudience} />
             </Section>
-          </div>
+          </ModalBody>
 
-          <DialogFooter className="min-w-0 flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
+          <ModalFooter
+            start={
             <span
               className={cn(
                 'flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold sm:text-sm',
@@ -132,15 +116,15 @@ const AudienceDialog = ({ event, onClose, onSaved }: AudienceDialogProps) => {
                   ? '0 students match this audience'
                   : ''}
             </span>
-            <span className="flex shrink-0 gap-2">
+            }
+          >
               <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
                 {isChange ? 'Cancel' : 'Later'}
               </Button>
               <Button type="button" onClick={save} disabled={isSaving}>
                 {isSaving ? 'Saving…' : 'Save and notify'}
               </Button>
-            </span>
-          </DialogFooter>
+          </ModalFooter>
         </DialogContent>
       </Dialog>
     </>

@@ -21,6 +21,17 @@ export const CALENDAR_LABELS: CalendarLabelsInput = {
   dayJump: {
     today: 'Today',
   },
+  state: {
+    retry: 'Retry',
+  },
+}
+
+/*
+  The words of this portal's own modals (create / edit, the event view, cancel,
+  delete, sync). The modals are the app's, so their words are too — the
+  calendar only words its own grid, toolbar and states (above).
+*/
+export const MODAL_LABELS = {
   // Create / edit an event or a reminder.
   entryDialog: {
     createEventTitle: 'Create New Event',
@@ -85,7 +96,4 @@ export const CALENDAR_LABELS: CalendarLabelsInput = {
     addButton: 'Add to',
   },
   // Loading failed.
-  state: {
-    retry: 'Retry',
-  },
-}
+} as const

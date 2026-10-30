@@ -1,4 +1,5 @@
 import { addDays, format, isSameDay, isToday, startOfWeek } from 'date-fns'
+
 import { cn } from '../../lib/utils'
 
 export interface WeekStripProps {

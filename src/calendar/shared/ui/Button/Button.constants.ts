@@ -1,4 +1,5 @@
 import { cva } from 'class-variance-authority';
+
 import type { SpinnerSize } from '../Spinner';
 import type { ButtonHoverEffect } from './Button.types';
 

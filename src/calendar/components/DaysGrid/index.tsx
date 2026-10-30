@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { format, isSameDay, isToday } from 'date-fns'
-import { cn } from '../../lib/utils'
-import { useIsMobile } from '../../hooks/useIsMobile'
+
 import ItemTile from '../ItemTile'
+import { cn } from '../../lib/utils'
 import { styleOf } from '../../helpers'
-import { lanesFor } from '../../helpers/conflicts'
-import { coversDay, spansDays } from '../../helpers/dates'
-import { WEEK_HOURS } from './DaysGrid.constants'
 import type { CalendarItem } from '../../types'
+import { WEEK_HOURS } from './DaysGrid.constants'
+import { lanesFor } from '../../helpers/conflicts'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { coversDay, spansDays } from '../../helpers/dates'
 
 export type DaysGridProps = {
   days: Date[]

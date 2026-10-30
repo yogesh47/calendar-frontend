@@ -7,7 +7,7 @@ import { messageOf, showError } from '@/lib/toast'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover'
 import { cn } from '@/lib/utils'
 import { onWindowFocus } from '@/modules/Calendar/services/live'
-import { requestOpenEvent } from '@/calendar'
+import { requestOpenEvent } from '@/modules/Calendar/services/openEvent'
 import {
   fetchNotifications,
   openCalendarStream,

@@ -5,6 +5,7 @@ export const minutesOfClock = (value: string): number => {
   return hour * 60 + (minute || 0)
 }
 
+/** Do two `HH:mm` ranges clash? A range with no end counts as half an hour. */
 export const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string): boolean => {
   const start = minutesOfClock(aStart)
   const end = aEnd ? minutesOfClock(aEnd) : start + 30

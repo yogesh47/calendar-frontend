@@ -2,14 +2,15 @@ import {
   eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday,
   startOfMonth, startOfWeek,
 } from 'date-fns'
-import { ChevronDown } from '../../icons'
-import { cn } from '../../lib/utils'
-import { useIsMobile } from '../../hooks/useIsMobile'
-import DayAgenda from './components/DayAgenda'
+
 import ItemTile from '../ItemTile'
-import { splitForMonthTile } from './MonthGrid.helpers'
+import { cn } from '../../lib/utils'
+import { ChevronDown } from '../../icons'
 import { itemsOn } from '../../helpers/dates'
+import DayAgenda from './components/DayAgenda'
 import type { CalendarItem } from '../../types'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { splitForMonthTile } from './MonthGrid.helpers'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 

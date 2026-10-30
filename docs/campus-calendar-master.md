@@ -22,6 +22,7 @@ wahan link diya hai. Backend ka poora architecture alag file me hai:
 7. [Backend ka khaka](#7-backend-ka-khaka)
 8. [Step by step — kya pehle, kya baad me](#8-step-by-step--kya-pehle-kya-baad-me)
    - [Repos aur unka role](#repos-aur-unka-role)
+   - [Abhi kaise bana hai — `calendar-frontend`](#abhi-kaise-bana-hai--calendar-frontend-2026-10-30)
    - [Screen → kahan banega → kaun sa FR](#screen--kahan-banega--kaun-sa-fr)
 8b. [Exact numbers — jo aasani se chhoot jaate hain](#8b-exact-numbers--jo-aasani-se-chhoot-jaate-hain)
 9. [Rules jo kahin na toote](#9-rules-jo-kahin-na-toote)
@@ -326,7 +327,7 @@ Poora design `campus-calendar-backend-design.md` me hai. Yahan sirf 6 lines:
 
 1. **Deadline kabhi store nahi hogi** — job se derive hogi, warna job badla aur
    calendar purana reh gaya
-2. **Event kabhi delete nahi hoga** — sirf soft cancel, audit ke liye
+2. **Event kabhi chupchaap delete nahi hota** — pehle soft cancel (audit ke liye, students ko "Cancelled" dikhta hai). Cancel ke baad hi uska maalik TPO use **hamesha ke liye delete** kar sakta hai ("Delete permanently"); "Delete all" bhi hai.
 3. **Har permission server par** — UI par button chhupana kaafi nahi
 4. **Role-based access capability matrix se** — naya role = ek entry, baaki kuch
    nahi badalta
@@ -413,9 +414,31 @@ Phase 10  mobile app                    ← repo milne par
 | Student Portal | `7Seers-Student-2.0` | React + TS (`src/modules/*`) |
 | Super Admin Portal | `7Seers-SuperAdminFE-Presentation` / `7Seers-RemoteFE-Admin` | React (JSX) |
 | Student Mobile App | **local repo me nahi hai** | — |
+| **Abhi ka chalta build** — frontend | `calendar/calendar-frontend` | React + TS + Vite — `src/calendar` (calendar package) + `src/modules/Calendar` (campus app) |
+| **Abhi ka chalta build** — backend | `calendar/calendar-backend` | FastAPI + Postgres (alag service — `campus-calendar-backend-design.md`) |
 
 > Mobile repo abhi machine par nahi hai. Phase 10 tab tak hold rahega jab tak
 > repo na mile — baaki kaam uske bina chalta rahega.
+
+### Abhi kaise bana hai — `calendar-frontend` (2026-10-30)
+
+Neeche ke phases plan hain; asli code me frontend do hisson me hai:
+
+| Hissa | Kahan | Kya karta hai |
+|---|---|---|
+| **Calendar package** (headless) | `src/calendar` (`index.ts`, `Calendar.tsx`) | **Sirf dikhata aur batata hai.** Koi modal, API call ya toast nahi. Sirf npm packages import karta hai (react, date-fns, lucide-react, clsx, tailwind-merge, class-variance-authority, `@radix-ui/react-popover`, `@radix-ui/react-slot`). Callbacks: `onViewEvent` (required), `onCreateRequest`, `onDeleteAllRequest`, `onSyncRequest`, `onNotice`. Views, `DayPreview` (din ki timeline — overlap wale items lanes me side-by-side, clash warning colour me), helpers, `LIMITS`, words export karta hai. Poora use: `src/calendar/README.md` (= `docs/calendar-usage.md`) |
+| **App ke modals + operations** | `src/modules/Calendar/pages/CalendarPage/index.tsx` | Ek `modal` state (`CalendarPage.types.ts`: `entry` / `publish` / `view` / `cancel` / `delete` / `deleteAll` / `sync`). Har modal yaad rakhta hai kahan se khula (`back`), to **Back / Go Back** wahin le jaata hai, bhare hue data ke saath. Saari API calls aur toasts yahin |
+| Modals | `src/modules/Calendar/components/` | `EventEntryDialog` (pehla step — title, date/time, repeat, remind, description/note; **event type nahi**), `PublishEventDialog` (doosra step — event type incl. My Reminder, "Other" + naam, company, venue/mode, audience (sirf create), image, linked job; edit me "Edit Event" / "Save Changes"), `EventDetailModal` (view), `CancelEventDialog`, `ConfirmDialog`, `SyncDialog`, `AudienceDialog`, `ClashWarning`; frame `Modal`, fields `TimeSelect`, `RepeatField`, `parts` |
+| Rules / helpers | `services/eventSchema.ts`, `services/openEvent.ts`, `helpers/drafts.ts`, `constants/{tpo,labels,words}.ts` | form ke rules (`allowPastDates` context me); bell se kholna; `reminderFor` / `dayEntriesOf`; `ALLOW_PAST_DATES = false`; `CALENDAR_LABELS` (calendar ke words) + `MODAL_LABELS` (modals ke words) |
+
+**Flow jo abhi chalta hai:**
+
+- **New Event** → pehla step → **Next** → doosra step (type chuno) → **Publish Event**. Doosre step ka **Back** sab bhara hua rakhta hai.
+- **Edit:** view → **Edit Event** (pehla step) → **Next** → doosra step → **Save Changes**. Reminder ka edit ek hi step.
+- **Cancel / Delete** view ya edit se → **Go Back** wahin laut-ta hai (edit ka unsaved input bacha rehta hai).
+- **Sync** toolbar se → app ka `SyncDialog` (`.ics` feed link, Google / Outlook).
+- **Bell / dashboard / reminders popup se kholna** → `requestOpenEvent(id)` (`services/openEvent.ts`) → page ka view modal khulta hai; page abhi khula na ho to load hone par.
+- **Past date:** `ALLOW_PAST_DATES = false` — past din par click ya create button kuch nahi kholta, calendar `onNotice({ type: 'past-date' })` bhejta hai; form bhi aaj ya aage ki date maangta hai (events aur reminders dono).
 
 ---
 
@@ -463,8 +486,9 @@ bola ho.
 | `calendar_settings` | Super Admin ki nudge settings (platform-wide, ek hi row) | FR-CAL-27 |
 
 **Dhyan rakhna:**
-- `calendar_event` me **soft delete nahi, soft cancel** hai — row kabhi delete
-  nahi hogi (FR-CAL-11).
+- `calendar_event` me pehle **soft cancel** hota hai (FR-CAL-11) — row rehti
+  hai aur students ko "Cancelled" dikhta hai. Cancel ke baad maalik TPO use
+  "Delete permanently" se hata sakta hai (aur "Delete all" bhi hai).
 - `calendar_event_recipient` me "removed" wala state rakhna zaroori hai, warna
   "No longer applicable" (FR-CAL-17) dikha hi nahi paoge.
 - Application Deadline ki **koi table nahi hogi** — wo job se derive hota hai
@@ -543,7 +567,7 @@ dikhenge**.
 | Endpoint | Rule |
 |---|---|
 | `POST /calendar/events` | audience se recipients nikal kar `calendar_event_recipient` bhar do |
-| `PATCH /calendar/events/{id}` | sirf creator; `event_type` kabhi badal nahi sakta; past event edit nahi ho sakta |
+| `PATCH /calendar/events/{id}` | sirf creator; `event_type` doosre event type me badal sakta hai (nudges reschedule), par **My Reminder me nahi → 403**; `other` par `other_type` (naam) required; past event edit nahi ho sakta |
 | `POST /calendar/events/{id}/cancel` | sirf creator; reason mandatory; end time ke baad nahi |
 
 Edit par **audience diff** nikalna hai — kaun bacha (updated), kaun naya aaya
@@ -621,6 +645,10 @@ Item par click → right side panel, calendar left me dikhta rahe. Paanch
 variants: apna event, doosre TPO ka event, cancelled event, deadline, my
 reminder (FR-CAL-13).
 
+> **Abhi:** detail ek modal hai — `EventDetailModal` (app ka). Calendar sirf
+> `onViewEvent` deta hai; campus wali rows (Campus time, "Other" ka naam, company,
+> audience, linked job) `CalendarPage` ka `eventDetails` deta hai.
+
 **Done when:** ek TPO apne college ka poora mahina teeno views me dekh sakta
 hai, filter laga sakta hai, aur kisi bhi item ka detail khol sakta hai.
 
@@ -637,10 +665,18 @@ Kaun sa field kab:
 
 | Type | Time | Mode/Venue | Audience |
 |---|---|---|---|
-| PPT, Company Visit, Training, Orientation, Practice Test, Other | Start + End | chahiye | chahiye |
+| PPT, Company Visit, Training, Orientation, Practice Test | Start + End | chahiye | chahiye |
+| Other | Start + End | chahiye | chahiye — **aur apna naam mandatory** (≤ 80) |
 | Online Assessment | Start + End | nahi | chahiye |
 | Deadline | sirf date (all-day) | nahi | chahiye |
 | My Reminder | date + optional time | nahi | **nahi** |
+
+> **Abhi kaise bana:** drawer nahi, **do-step modal**. Pehla step (`EventEntryDialog`)
+> generic hai — title, date/time, repeat, remind, description; type nahi. **Next** →
+> doosra step (`PublishEventDialog`) me type (My Reminder bhi), "Other" ka naam,
+> company, venue/mode, audience, image, linked job. Form ke bagal me calendar ka
+> `DayPreview` din ki timeline dikhata hai; clash hone par `ClashWarning` —
+> "N events clash", har line par naam + time, pehle 3 phir "+N more".
 
 #### Step 4.2 — Audience builder  ·  `T-03`
 
@@ -656,13 +692,21 @@ jaankari ke liye, rokna nahi hai (FR-CAL-05).
 
 #### Step 4.4 — Edit  ·  `T-05`
 
-- Sirf creator, aur `event_type` lock.
+- Sirf creator. `event_type` doosre event type me badal sakta hai, par **My
+  Reminder me kabhi nahi** (edit par type picker me My Reminder hai hi nahi; backend 403).
 - **Important change** (date/time/mode/venue/audience) → notification pakka.
 - **Minor change** (title/description/company) → checkbox "Notify students about
   this change", default **off**.
-- Audience badli to save se pehle **Updated / Added / Removed** ka summary +
-  optional "Reason for change".
-- Button ka text badlega: "Save & Notify X" ya "Save Changes".
+- Audience edit form me nahi badalti — event ke view se alag **Audience** dialog
+  (`AudienceDialog`, `PUT /calendar/events/{id}/audience`) kaun judega / kaun hatega
+  dikhata hai aur wahi notify karta hai. (Alag "review changes" dialog bana tha,
+  kabhi use nahi hua — hata diya.)
+- Edit ka raasta: view → **Edit Event** (pehla step) → **Next** → doosra step →
+  **Save Changes**. Reminder ka edit ek hi step.
+- Frontend `notify_on_change = !onlyMinorChanged || ticked` bhejta hai. Off par
+  jinhone notification padh li thi unki read hi rehti hai ("… details have been
+  updated."); on par sabko phir unread ("… has been updated: <summary>.").
+  Change summary description/note ko unke text se compare karti hai.
 
 **FR:** FR-CAL-10
 
@@ -673,6 +717,12 @@ Reason mandatory (Postponed / Company Withdrew / Created by Mistake / Other).
 
 **Created by Mistake** alag behave karta hai: student ke calendar se hat jaata
 hai, TPO ke calendar par Cancelled dikhta rahega (FR-CAL-11).
+
+**Abhi:** `CancelEventDialog` (app ka; header / body / footer config se) view ya
+edit dono se khulta hai; **Go Back** wahin laut-ta hai, edit ka unsaved input
+bacha rehta hai. "Postponed" wali tip edit kholti hai. Repeating event par
+"only this" ya "this and later". Cancelled event ko owner view se **Delete
+permanently** kar sakta hai (`ConfirmDialog`).
 
 #### Step 4.5a — Link a Job  ·  `T-03e`  *(naya)*
 
@@ -692,6 +742,11 @@ Optional hai — koi bhi event bina linked job ke publish ho sakta hai.
 
 Usi drawer se, type = My Reminder. Drawer par likha ho "Only you can see this.
 No students are notified." Edit/Delete hai, Cancel nahi (FR-CAL-12).
+
+**Abhi:** TPO doosre step me type = My Reminder chun kar **Save Reminder** karta
+hai; student ka "Add Reminder" pehle step par hi save ho jaata hai. Kisi event par
+student ka **Remind me** pehla step kholta hai, linked reminder ke saath
+(`helpers/drafts.ts` → `reminderFor`).
 
 **Done when:** ek TPO event bana sakta hai, badal sakta hai, cancel kar sakta
 hai; doosre TPO ko sirf view-only dikhta hai.
@@ -718,6 +773,11 @@ me jaaye.
 #### Step 5.3 — Deep link
 
 Bell ya push par tap karne se seedha usi item ka detail khule.
+
+**Abhi:** bell, dashboard ke Coming Up / Updates feed aur reminders popup
+`requestOpenEvent(id)` (`src/modules/Calendar/services/openEvent.ts`) bulaate
+hain; calendar page (`takePendingOpen` / `onOpenEventRequest`) apna view modal
+kholta hai — page baad me khule to bhi. Calendar package isme shaamil nahi.
 
 **Done when:** har trigger par sahi channel par sahi text jaata hai, aur
 notification service band hone par bhi event save hota hai.
@@ -878,25 +938,28 @@ hai.
 
 #### TPO Portal — `7Seers-TPO-2.0`
 
+> `Kahan` me `src/pages/Calendar/…` plan tha. Abhi ka asli code `calendar-frontend`
+> me hai — har row me "Abhi:" ke baad (`components/` = `src/modules/Calendar/components/`).
+
 | Screen | Kya | Kahan | FR | Phase |
 |---|---|---|---|---|
 | T-01 | Sidebar item + route | `src/shared/components/Sidebar`, `src/app/routes/TpoRoutes.tsx` | 01 | 3 |
-| T-02 | Calendar page + Month view | `src/pages/Calendar/` | 02, 03, 04 | 3 |
-| T-02a | Week view | `src/pages/Calendar/views/Week` | 02 | 3 |
-| T-02b | List view | `src/pages/Calendar/views/List` | 02 | 3 |
-| T-02c | Empty / loading / error | `src/pages/Calendar/states/` | 02 | 3 |
-| T-03 | Create Event drawer | `src/pages/Calendar/components/EventDrawer` | 05, 06, 07 | 4 |
+| T-02 | Calendar page + Month view | `src/pages/Calendar/` · Abhi: `src/modules/Calendar/pages/CalendarPage` + `src/calendar` (`MonthGrid`) | 02, 03, 04 | 3 |
+| T-02a | Week view | `src/pages/Calendar/views/Week` · Abhi: `src/calendar/components/DaysGrid` | 02 | 3 |
+| T-02b | List view | `src/pages/Calendar/views/List` · Abhi: `src/calendar/components/ListView` | 02 | 3 |
+| T-02c | Empty / loading / error | `src/pages/Calendar/states/` · Abhi: `src/calendar/components/CalendarState` | 02 | 3 |
+| T-03 | Create Event drawer | `src/pages/Calendar/components/EventDrawer` · Abhi: do-step modal — `components/EventEntryDialog` → `components/PublishEventDialog` | 05, 06, 07 | 4 |
 | T-03a | Online Assessment variant | wahi drawer, type-wise fields | 06 | 4 |
 | T-03b | Deadline variant | wahi drawer | 06 | 4 |
 | T-03c | My Reminder variant | wahi drawer | 12 | 4 |
 | T-03d | Validation errors | wahi drawer | 05 | 4 |
-| T-04 | Detail — creator | `src/pages/Calendar/components/DetailPanel` | 13 | 3 |
+| T-04 | Detail — creator | `src/pages/Calendar/components/DetailPanel` · Abhi: `components/EventDetailModal` (+ `CalendarPage` → `eventDetails`) | 13 | 3 |
 | T-04a | Detail — other TPO | wahi panel, view-only state | 09 | 3 |
 | T-04b | Detail — cancelled | wahi panel | 11, 13 | 3 |
 | T-04c | Detail — deadline | wahi panel | 08, 13 | 3 |
 | T-04d | Detail — my reminder | wahi panel | 12 | 3 |
-| T-05 | Edit — review changes | `src/pages/Calendar/components/ReviewChanges` | 10 | 4 |
-| T-06 | Cancel dialog | `src/pages/Calendar/components/CancelDialog` | 11 | 4 |
+| T-05 | Edit — review changes | Abhi: edit = wahi do-step modal (`isEdit`, "Save Changes"); audience badalna `components/AudienceDialog`. Alag ReviewChanges dialog **nahi** — bana tha, kabhi use nahi hua, hata diya | 10 | 4 |
+| T-06 | Cancel dialog | `src/pages/Calendar/components/CancelDialog` · Abhi: `components/CancelEventDialog` (+ `ConfirmDialog` delete ke liye) | 11 | 4 |
 
 #### Student Portal — `7Seers-Student-2.0`
 
@@ -969,6 +1032,7 @@ inline mat likho.
 | Venue / Online platform | 200 | 05 |
 | Reminder ka note | 500 | 12, 19 |
 | Cancel ka "Other" note | 200 | 11 |
+| Event type "Other" ka naam (`other_type`) | 80, mandatory | 05 |
 | Month tile par items | **3**, phir "+N more" | 02 |
 | "Coming Up" card | agle **3** items | 14, 20 |
 | **"Updated" badge** | **48 ghante** | 17 |
@@ -993,10 +1057,15 @@ inline mat likho.
   agar event khud quiet hours me shuru ho raha ho (FR-CAL-26)
 - **Deadline card par JRI Match strip** — student ke feed me (FR-CAL-18, S-03)
 - **Batch ka label** — "2027 (Final year)", sirf saal nahi (FR-CAL-07)
-- **Past dates** — TPO apne My Reminder past date par bana sakta hai; events
-  nahi (FR-CAL-12 vs FR-CAL-05)
-- **Edit ke baad bhi event type lock** — publish ke baad kabhi nahi badalta
-  (FR-CAL-05)
+- **Past dates** — spec: TPO apne My Reminder past date par bana sakta hai; events
+  nahi (FR-CAL-12 vs FR-CAL-05). **Abhi:** `ALLOW_PAST_DATES = false`
+  (`constants/tpo.ts`) — events aur reminders dono sirf aaj ya aage; past din par
+  click "Events and reminders can only be created for today or later." dikhata hai
+- **Event type edit par** — spec me lock tha (FR-CAL-05). **Abhi:** ek event type
+  se doosre me badal sakta hai (nudges reschedule), par event → My Reminder kabhi
+  nahi (403 "An event cannot be changed into a reminder")
+- **"Other" type** — apna naam mandatory (≤ 80); detail me "Event type" row me wahi
+  naam dikhta hai
 - **Linked Job** (UI Spec addition) — optional; campus job **ya** pasted link,
   dono nahi. Pasted link `https://` se shuru hona chahiye aur uske saath Job
   Title bhi mandatory hai
@@ -1017,7 +1086,7 @@ chahiye:
 | # | Rule | Kyun |
 |---|---|---|
 | 1 | **Ek hi entry point** — TPO ke liye sirf sidebar ka Campus Calendar | kisi aur page par koi calendar button/widget nahi |
-| 2 | **Ek hi Create form**, 9 types — sirf fields badalte hain | 9 alag form banaoge to 9 jagah bug fix karna padega |
+| 2 | **Ek hi Create form**, 9 types — sirf fields badalte hain (abhi: ek generic pehla step + ek doosra step jisme type chuna jaata hai) | 9 alag form banaoge to 9 jagah bug fix karna padega |
 | 3 | **Colour + text label dono** | accessibility, aur busy days padhne layak rahein |
 | 4 | **Edit/cancel sirf creator** | doosre TPO ko view-only note dikhega |
 | 5 | **Deadline derive hogi, store nahi** | job badalte hi calendar apne aap sahi |
@@ -1048,6 +1117,14 @@ chahiye:
 - [ ] 51st reminder banane ki koshish → limit ka message
 - [ ] Filter lagao → TPO ke apne My Reminders phir bhi dikhein
 - [ ] Mahine badlo, view badlo → filters bache rahein
+- [ ] New Event → Next → doosre step se **Back** → pehle step me sab bhara hua; phir Publish
+- [ ] Type "Other" bina naam ke → "Enter the event type." (API: 422 "Specify the event type"); naam ke saath publish → detail me wahi naam
+- [ ] Edit: view → Edit Event → Next → Save Changes; type badlo (PPT → Training) chalta hai; My Reminder picker me nahi (API par 403)
+- [ ] Cancel / Delete view ya edit se kholo → **Go Back** wahin laut-e, edit ka unsaved input bacha rahe
+- [ ] Sirf title/description/company badlo, "Notify students" off → jinhone padh li thi unki notification read hi rahe, "… details have been updated."
+- [ ] Past din par click / create (`ALLOW_PAST_DATES = false`) → kuch na khule, "today or later" ka message
+- [ ] Bell / dashboard se item kholo (calendar page band ho tab bhi) → calendar par view modal khule
+- [ ] Sync → `.ics` link copy ho, Google / Outlook buttons chalein
 
 ---
 

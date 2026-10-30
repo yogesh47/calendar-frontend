@@ -1,6 +1,6 @@
 import { cn } from '../../../lib/utils';
-import { DEFAULT_TRAIL_THICKNESS, SIZES, TRAIL_SIZES } from './Spinner.constants';
 import type { SpinnerProps } from './Spinner.types';
+import { DEFAULT_TRAIL_THICKNESS, SIZES, TRAIL_SIZES } from './Spinner.constants';
 
 export type { SpinnerProps, SpinnerSize, SpinnerVariant } from './Spinner.types';
 

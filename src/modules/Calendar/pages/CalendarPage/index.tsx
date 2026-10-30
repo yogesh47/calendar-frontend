@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BellRing, Building2, ExternalLink, Globe, Link2, Tag, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { messageOf, showError, showInfo, showSuccess } from '@/lib/toast'
-import { Calendar, DetailRow } from '@/calendar'
+import { Calendar } from '@/calendar'
+import { DetailRow } from '@/modules/Calendar/components/parts'
 import { useCalendarEvents } from '../../hooks/useCalendarEvents'
 import {
   cancelEvent,
@@ -18,10 +19,23 @@ import {
 } from '../../services/api'
 import AudienceDialog from '../../components/AudienceDialog'
 import FilterBar from '../../components/FilterBar'
+import { format } from 'date-fns'
+import { NUDGE_TYPE, REMINDER_TYPE } from '@/calendar'
+import { dayEntriesOf, reminderFor } from '@/modules/Calendar/helpers/drafts'
+import EventEntryDialog from '../../components/EventEntryDialog'
 import PublishEventDialog from '../../components/PublishEventDialog'
+import EventDetailModal from '../../components/EventDetailModal'
+import CancelEventDialog from '../../components/CancelEventDialog'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import SyncDialog from '../../components/SyncDialog'
+import type { SyncNotice } from '../../components/SyncDialog'
+import type { CancelDialogConfig, CancelReasonOption } from '../../components/CancelEventDialog'
+import type { CalendarModal } from './CalendarPage.types'
+import { onOpenEventRequest, takePendingOpen } from '../../services/openEvent'
 import { audienceLine, changedSummary, onlyMinorChanged, rulesFor, timeThere } from '../../helpers/tpo'
 import { visibleEvents } from '../../helpers/filters'
 import {
+  ALLOW_PAST_DATES,
   ASSESSMENT_EMAIL_NOTE,
   CANCEL_REASONS,
   EMPTY_DRAFT,
@@ -30,16 +44,8 @@ import {
   TPO_EVENT_TYPES,
 } from '../../constants/tpo'
 import { COMPANY_OPTIONS } from '../../constants'
-import { CALENDAR_LABELS } from '../../constants/labels'
-import type {
-  CalendarEvent,
-  CalendarHandle,
-  CalendarNotice,
-  CalendarSyncSettings,
-  DayEntry,
-  EventActionContext,
-  EventDraft,
-} from '@/calendar'
+import { CALENDAR_LABELS, MODAL_LABELS } from '../../constants/labels'
+import type { CalendarEvent, CalendarNotice, CalendarSyncSettings, EventDraft } from '@/calendar'
 import type { CalendarFilters, TpoDraft, TpoEvent } from '../../types/tpo'
 
 interface CalendarPageProps {
@@ -69,34 +75,54 @@ const fillSample = (draft: EventDraft): Partial<EventDraft> =>
     : { title: 'TCS Campus Drive — Pre-Placement Talk', description: 'Bring your resume and ID card.' }
 
 // What the calendar noticed, in this app's words and toast.
-const sayNotice = (notice: CalendarNotice) => {
+const sayNotice = (notice: CalendarNotice | SyncNotice) => {
+  if (notice.type === 'past-date') showInfo('Events and reminders can only be created for today or later.')
   if (notice.type === 'reminder-limit') showInfo(`You've reached ${notice.limit} upcoming reminders. Delete some to add more.`)
   if (notice.type === 'feed-link-copied') showSuccess('Calendar link copied.')
   if (notice.type === 'feed-link-copy-failed') showError('Could not copy. Select the link and copy it by hand.')
 }
+
+// The cancel modal's words for this portal; its frame is the calendar's.
+const cancelConfig = (event: TpoEvent): CancelDialogConfig => ({
+  reasonLabel: 'Why is it cancelled?',
+  notePlaceholder: 'Tell the students why',
+  editDateHint: 'Only the date changed? Edit it instead — students keep the event.',
+  footerStart: event.reach ? `${event.reach} students will be notified` : 'No students are notified',
+  notice: null,
+})
 
 const reachLine = (reach: number | undefined): string =>
   reach === undefined ? '' : reach > 0 ? ` ${reach} students notified.` : ' It does not reach any students yet.'
 
 /**
  * The app's calendar route. <Calendar /> is the self-contained `src/calendar`
- * package and knows nothing of TPOs, students, jobs or audiences. This page
- * hands it the data, the event types and the permissions, and adds everything
- * campus-specific around it: publishing, the audience, the filter, and the rows
- * and buttons in the event panel.
+ * package and knows nothing of TPOs, students, jobs or audiences. It runs
+ * headless here: it draws the calendar and says what the user asked for
+ * (create, view…); every modal is this page's own (`EventModals`), built from
+ * the calendar's pieces plus the campus ones — publishing, the audience, the
+ * filter, and the rows and buttons of the event view.
  */
 const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) => {
   const navigate = useNavigate()
-  const calendar = useRef<CalendarHandle>(null)
   const isTpo = role === 'tpo'
-  // The second step's draft, and whether it is a new event or an edit of one.
-  const [publishing, setPublishing] = useState<{ draft: TpoDraft; isEdit: boolean } | null>(null)
-  const [dayEntries, setDayEntries] = useState<DayEntry[]>([])
+  // Which modal is open — every one of them is this page's, not the calendar's.
+  const [modal, setModal] = useState<CalendarModal | null>(null)
   const [audienceFor, setAudienceFor] = useState<TpoEvent | null>(null)
   const [filters, setFilters] = useState<CalendarFilters>(EMPTY_FILTERS)
   const { events, isLoading, loadError, refresh, retry } = useCalendarEvents()
 
   const shown = useMemo(() => visibleEvents(events, filters, isTpo), [events, filters, isTpo])
+
+  /*
+    An item opened from outside — the bell, a dashboard feed, a push — on this
+    page or before it was open. The view modal shows it as soon as it is loaded.
+  */
+  useEffect(() => {
+    const waiting = takePendingOpen()
+    if (waiting) setModal({ kind: 'view', eventId: waiting })
+
+    return onOpenEventRequest((eventId) => setModal({ kind: 'view', eventId }))
+  }, [])
 
   /*
     Every change goes through the app's API, the list is fetched again, and the
@@ -194,8 +220,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
     navigate(`/${role}/jobs`)
   }
 
-  const eventActions = (calendarEvent: CalendarEvent, { defaults, close }: EventActionContext) => {
-    const event = calendarEvent as TpoEvent
+  const eventActions = (event: TpoEvent, defaults: React.ReactNode, close: () => void) => {
     const { eventType, linkedType } = event.draft
 
     // A student opens the job behind a deadline, or behind a nudge about one.
@@ -308,60 +333,203 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
     )
   }
 
+  // ── The modals: every one is this page's own, opened from the calendar's callbacks ──
+  const [notifyMinor, setNotifyMinor] = useState(false)
+  const close = () => setModal(null)
+
+  // An API call that, once it worked, closes the modal. On failure the app has
+  // already shown the error, and the modal stays open with what was filled in.
+  const then = (work: Promise<unknown>) =>
+    work.then(
+      () => close(),
+      () => undefined,
+    )
+
+  const byId = (eventId?: string | null) => events.find((event) => event.id === eventId) ?? null
+  const isReminder = (event: TpoEvent | null) => event?.draft.eventType === REMINDER_TYPE
+
+  const save = (draft: EventDraft, editing: TpoEvent | null) =>
+    then(editing ? update(editing.id, draft, { notify: notifyMinor }) : create(draft))
+
+  const openEdit = (event: TpoEvent, draft: TpoDraft = event.draft) => {
+    setNotifyMinor(false)
+    setModal({ kind: 'entry', draft, editing: event })
+  }
+
+  // ── View ────────────────────────────────────────────────────────────
+  const viewed = modal?.kind === 'view' ? byId(modal.eventId) : null
+  const linked =
+    viewed && viewed.draft.linkedType === 'event' && viewed.draft.linkedId ? byId(viewed.draft.linkedId) : null
+  const canRemind =
+    !isTpo &&
+    viewed &&
+    !isReminder(viewed) &&
+    viewed.draft.eventType !== NUDGE_TYPE &&
+    viewed.appliesToMe &&
+    !viewed.cancelledAt
+
+  // ── First step (the calendar's generic form) and the second (this portal's) ──
+  const entry = modal?.kind === 'entry' ? modal : null
+  const publish = modal?.kind === 'publish' ? modal : null
+  const editing = entry?.editing ?? publish?.editing ?? null
+
+  // ── Cancel / delete ─────────────────────────────────────────────────
+  const cancelling = modal?.kind === 'cancel' ? modal : null
+  const deleting = modal?.kind === 'delete' ? modal : null
+  const reasons: CancelReasonOption[] = CANCEL_REASONS
+
   return (
     <>
+      {/* The calendar only draws and tells; every modal below and every API call is this page's own. */}
       <Calendar
-        ref={calendar}
         title={title}
         labels={CALENDAR_LABELS}
         permissions={{ createEvents: isTpo }}
+        allowPastDates={ALLOW_PAST_DATES}
         eventTypes={TPO_EVENT_TYPES}
         draftDefaults={TPO_DRAFT_DEFAULTS}
-        cancelReasons={CANCEL_REASONS}
-        audienceNoun="students"
-        fillSample={fillSample}
         events={shown}
         isLoading={isLoading}
         loadError={loadError}
         onRetry={retry}
-        onCreate={create}
-        onUpdate={update}
-        onCancel={cancel}
-        onDelete={remove}
-        onDeleteAll={isTpo ? removeAll : undefined}
-        getFeedLink={feedLink}
-        getSyncSettings={syncSettings}
-        onSyncSettingsChange={changeSyncSettings}
-        resolveImageUrl={imageSrc}
         onNotice={sayNotice}
-        onNext={(draft, { isEdit }) => setPublishing({ draft: draft as TpoDraft, isEdit })}
-        onDayEntries={setDayEntries}
-        eventActions={eventActions}
-        renderEventDetails={eventDetails}
+        onViewEvent={(event) => setModal({ kind: 'view', eventId: event.id })}
+        onCreateRequest={(draft) => setModal({ kind: 'entry', draft: draft as TpoDraft, editing: null })}
+        onDeleteAllRequest={isTpo ? () => setModal({ kind: 'deleteAll' }) : undefined}
+        onSyncRequest={() => setModal({ kind: 'sync' })}
         toolbarExtras={
           isTpo ? <FilterBar filters={filters} companies={COMPANY_OPTIONS} onChange={setFilters} /> : undefined
         }
       />
 
+      <EventDetailModal
+        event={viewed}
+        eventTypes={TPO_EVENT_TYPES}
+        linkedEvent={linked}
+        renderDetails={eventDetails}
+        resolveImageUrl={imageSrc}
+        onClose={close}
+        onOpenLinked={() => linked && setModal({ kind: 'view', eventId: linked.id })}
+        onUpdateReminderDate={
+          viewed && linked
+            ? () =>
+                void update(
+                  viewed.id,
+                  {
+                    ...viewed.draft,
+                    eventDate: linked.draft.eventDate,
+                    endDate: linked.draft.eventDate,
+                    startTime: linked.draft.startTime || viewed.draft.startTime,
+                  },
+                  { notify: false },
+                ).catch(() => undefined)
+            : undefined
+        }
+        onEdit={() => viewed && openEdit(viewed)}
+        onCancel={() => viewed && setModal({ kind: 'cancel', event: viewed, back: modal })}
+        onDelete={() => viewed && setModal({ kind: 'delete', event: viewed, mode: 'reminder', back: modal })}
+        onDeleteForever={() => viewed && setModal({ kind: 'delete', event: viewed, mode: 'cancelled', back: modal })}
+        onRemindMe={canRemind && viewed ? () => setModal({ kind: 'entry', draft: reminderFor(viewed, EMPTY_DRAFT), editing: null }) : undefined}
+        renderActions={viewed ? (defaults) => eventActions(viewed, defaults, close) : undefined}
+      />
+
+      <EventEntryDialog
+        open={Boolean(entry)}
+        initial={entry?.draft ?? EMPTY_DRAFT}
+        isEdit={Boolean(entry?.editing)}
+        reminderOnly={!isTpo}
+        allowPastDates={ALLOW_PAST_DATES}
+        eventTypes={TPO_EVENT_TYPES}
+        audienceNoun="students"
+        fillSample={fillSample}
+        notifyCount={entry?.editing?.reach ?? 0}
+        notifyMinor={notifyMinor}
+        onNotifyMinorChange={setNotifyMinor}
+        dayEntries={dayEntriesOf(events, editing?.id)}
+        canCancelEvent={Boolean(editing && editing.isOwner && !editing.cancelledAt && !isReminder(editing))}
+        canDeleteReminder={Boolean(editing && editing.isOwner && isReminder(editing))}
+        onCancelEvent={(draft) =>
+          entry?.editing &&
+          setModal({ kind: 'cancel', event: entry.editing, back: { ...entry, draft: draft as TpoDraft } })
+        }
+        onDeleteReminder={(draft) =>
+          entry?.editing &&
+          setModal({ kind: 'delete', event: entry.editing, mode: 'reminder', back: { ...entry, draft: draft as TpoDraft } })
+        }
+        onClose={close}
+        onSave={(draft) => save(draft, entry?.editing ?? null)}
+        // Only a TPO has a second step; a student's reminder saves here.
+        onNext={isTpo ? (draft) => entry && setModal({ kind: 'publish', draft: draft as TpoDraft, editing: entry.editing }) : undefined}
+      />
+
       <PublishEventDialog
-        open={Boolean(publishing)}
-        initial={publishing?.draft ?? EMPTY_DRAFT}
-        isEdit={publishing?.isEdit ?? false}
-        dayEntries={dayEntries}
-        /* Back — ye band, aur calendar ka modal wahi draft le kar wapas. */
-        onBack={() => {
-          const draft = publishing?.draft
-          setPublishing(null)
-          if (draft) calendar.current?.openEntry(draft)
-        }}
-        onClose={() => {
-          setPublishing(null)
-          calendar.current?.closeEntry()
-        }}
-        onSave={(draft) => {
-          setPublishing(null)
-          calendar.current?.save(draft)
-        }}
+        open={Boolean(publish)}
+        initial={publish?.draft ?? EMPTY_DRAFT}
+        isEdit={Boolean(publish?.editing)}
+        dayEntries={dayEntriesOf(events, editing?.id)}
+        onBack={(draft) => publish && setModal({ kind: 'entry', draft, editing: publish.editing })}
+        onClose={close}
+        onSave={(draft) => save(draft, publish?.editing ?? null)}
+      />
+
+      <CancelEventDialog
+        open={Boolean(cancelling)}
+        event={cancelling?.event ?? null}
+        dateLabel={cancelling ? format(new Date(`${cancelling.event.draft.eventDate}T00:00:00`), 'd MMM') : ''}
+        notifyCount={cancelling?.event.reach ?? 0}
+        isRecurring={Boolean(cancelling?.event.seriesId)}
+        reasons={reasons}
+        audienceNoun="students"
+        config={cancelling ? cancelConfig(cancelling.event) : undefined}
+        onBack={() => setModal(cancelling?.back ?? null)}
+        // From the edit modal: back to it as it was left. From anywhere else: open the edit.
+        onEditDate={() =>
+          cancelling &&
+          (cancelling.back?.kind === 'entry' ? setModal(cancelling.back) : openEdit(cancelling.event))
+        }
+        onConfirm={(reason, note, scope) => cancelling && then(cancel(cancelling.event.id, reason, note, scope))}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title={
+          deleting?.mode === 'cancelled'
+            ? 'Delete this cancelled event permanently?'
+            : deleting?.event.seriesId
+              ? 'Delete this repeating reminder?'
+              : 'Delete this reminder?'
+        }
+        confirmLabel={
+          deleting?.mode === 'cancelled'
+            ? MODAL_LABELS.confirmDialog.deletePermanently
+            : MODAL_LABELS.confirmDialog.delete
+        }
+        onBack={() => setModal(deleting?.back ?? null)}
+        onConfirm={() => deleting && then(remove(deleting.event.id, { scope: 'one' }))}
+        alternateLabel={
+          deleting?.mode === 'reminder' && deleting.event.seriesId
+            ? MODAL_LABELS.confirmDialog.deleteRepeatsToo
+            : undefined
+        }
+        onAlternate={() => deleting && then(remove(deleting.event.id, { scope: 'series' }))}
+      />
+
+      <ConfirmDialog
+        open={modal?.kind === 'deleteAll'}
+        title={`Delete all ${events.length} events and reminders permanently?`}
+        confirmLabel={MODAL_LABELS.confirmDialog.deleteAll}
+        onBack={close}
+        onConfirm={() => then(removeAll())}
+      />
+
+      <SyncDialog
+        open={modal?.kind === 'sync'}
+        calendarName={title}
+        getFeedLink={feedLink}
+        getSyncSettings={syncSettings}
+        onSyncSettingsChange={changeSyncSettings}
+        onNotice={sayNotice}
+        onClose={close}
       />
 
       <AudienceDialog

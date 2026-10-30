@@ -1,6 +1,7 @@
 import { differenceInHours, isBefore } from 'date-fns'
-import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE, LIMITS } from '../constants'
+
 import { DEADLINE_TYPE, NUDGE_TYPE, REMINDER_TYPE } from '../types'
+import { CALENDAR_ITEM_STYLE, CANCELLED_STYLE, LIMITS } from '../constants'
 import type { CalendarEvent, CalendarEventType, CalendarItem, CalendarItemKind } from '../types'
 
 /**

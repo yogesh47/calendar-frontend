@@ -1,5 +1,5 @@
-import tailwindcssAnimate from 'tailwindcss-animate'
 import type { Config } from 'tailwindcss'
+import tailwindcssAnimate from 'tailwindcss-animate'
 
 /*
   The Tailwind theme the calendar's classes are written against. A host adds it

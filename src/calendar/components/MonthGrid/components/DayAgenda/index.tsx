@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import { differenceInMinutes, format } from 'date-fns'
-import { Popover, PopoverContent, PopoverTrigger } from '../../../../shared/ui/Popover'
+
 import { cn } from '../../../../lib/utils'
 import { styleOf } from '../../../../helpers'
-import type { ReactNode } from 'react'
 import type { CalendarItem } from '../../../../types'
+import { Popover, PopoverContent, PopoverTrigger } from '../../../../shared/ui/Popover'
 
 interface DayAgendaProps {
   day: Date

@@ -1,34 +1,28 @@
-import './styles/calendar.css'
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { addDays, addMonths, addWeeks, endOfWeek, format, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
+
+import './styles/calendar.css'
+import { LIMITS } from './constants'
+import { mergeLabels } from './labels'
+import { REMINDER_TYPE } from './types'
+import type { CalendarView } from './types'
 import { CalendarDays, Plus } from './icons'
-import { useIsMobile } from './hooks/useIsMobile'
 import ListView from './components/ListView'
 import DaysGrid from './components/DaysGrid'
+import type { CalendarIcons } from './icons'
 import MonthGrid from './components/MonthGrid'
 import WeekStrip from './components/WeekStrip'
-import CalendarEntryDialog from './components/CalendarEntryDialog'
-import CalendarDialogs from './components/CalendarDialogs'
+import { useIsMobile } from './hooks/useIsMobile'
+import CalendarProvider from './CalendarProvider'
+import { itemFromEvent, kindOf } from './helpers'
 import CalendarSidebar from './components/CalendarSidebar'
 import CalendarToolbar from './components/CalendarToolbar'
-import { CalendarError, CalendarSkeleton } from './components/CalendarState'
-import SyncDialog from './components/SyncDialog'
-import { EMPTY_DRAFT, newDraftOn, newReminderOn } from './helpers/drafts'
-import { onOpenEventRequest, takePendingOpen } from './services/store'
-import CalendarProvider from './CalendarProvider'
-import { mergeLabels } from './labels'
-import type { CalendarLabels, CalendarLabelsInput } from './labels'
-import type { CalendarIcons } from './icons'
-import { itemFromEvent, kindOf } from './helpers'
-import { LIMITS } from './constants'
 import { CALENDAR_STATE_COPY } from './Calendar.constants'
-import { DEFAULT_CANCEL_REASONS } from './Calendar.constants'
-import type { DayEntry } from './Calendar.types'
-import type { CalendarView } from './types'
-import { REMINDER_TYPE } from './types'
-import type { CalendarEvent, CalendarEventType, CalendarSyncSettings, EventDraft } from './types'
-import type { CancelReasonOption } from './components/CalendarDialogs/components/CancelDialog'
+import type { CalendarLabels, CalendarLabelsInput } from './labels'
+import { EMPTY_DRAFT, newDraftOn, newReminderOn } from './helpers/drafts'
+import type { CalendarEvent, CalendarEventType, EventDraft } from './types'
+import { CalendarError, CalendarSkeleton } from './components/CalendarState'
 
 const ALL_VIEWS: CalendarView[] = ['day', 'week', 'month', 'list']
 
@@ -41,15 +35,6 @@ const VIEW_LABELS: { id: CalendarView; label: string }[] = [
   { id: 'list', label: 'List' },
 ]
 
-export interface CalendarHandle {
-  /** Jo draft publish dialog se poora hua, use yahin save kiya jaata hai. */
-  save: (draft: EventDraft) => void
-  /** Publish dialog se "Back" — wahi draft le kar calendar ka apna modal wapas kholo (edit ho to edit hi rahe). */
-  openEntry: (draft: EventDraft) => void
-  /** Dono modal ek saath band karne ke liye. */
-  closeEntry: () => void
-}
-
 /*
   Things the calendar itself notices, with no words attached — the app decides
   what to say, in its own toast. Outcomes of the app's own callbacks (saved,
@@ -57,8 +42,8 @@ export interface CalendarHandle {
 */
 export type CalendarNotice =
   | { type: 'reminder-limit'; limit: number }
-  | { type: 'feed-link-copied' }
-  | { type: 'feed-link-copy-failed' }
+  /** A past day was picked to create on, and `allowPastDates` is off. */
+  | { type: 'past-date'; date: string }
 
 export type CalendarPermissions = {
   /** Create events (and reminders). Default: no. */
@@ -68,20 +53,11 @@ export type CalendarPermissions = {
 }
 
 
-/** What a host's event buttons get to work with. */
-export interface EventActionContext {
-  /** The panel's own buttons — Edit, Cancel Event, Remind me… — to keep, drop or reorder. */
-  defaults: ReactNode
-  /** Close the detail panel, e.g. before opening the host's own dialog. */
-  close: () => void
-}
-
 export interface CalendarProps {
   /*
-    Data aur kaam, dono bahar se. Calendar khud koi API nahi bulata — app apni
-    API se events laati hai aur yahan deti hai, aur jo kuch badalna ho wo inhi
-    callbacks se karti hai. Isliye ye folder kisi bhi repo me, kisi bhi API ke
-    saath chal jaata hai.
+    The calendar only draws and tells. It calls no API and opens no modal: it
+    hands the app what the user asked for, and the app shows its own modal and
+    does the work — so every project brings its own modals and operations.
   */
   /** Everything to draw: events, reminders, deadlines, nudges. */
   events: CalendarEvent[]
@@ -90,25 +66,17 @@ export interface CalendarProps {
   /** The load failed; shown with a Retry that calls `onRetry`. */
   loadError?: string | null
   onRetry?: () => void
-  /** Save a new event or reminder. Resolves with what was saved. */
-  onCreate: (draft: EventDraft) => Promise<CalendarEvent>
-  /** Save changes to one. */
-  /** Save changes to one. `notify` — the user ticked "Notify about this change". */
-  onUpdate: (eventId: string, draft: EventDraft, options: { notify: boolean }) => Promise<CalendarEvent>
-  /** Cancel an event — this date, or this and every later one of its series. */
-  onCancel: (eventId: string, reason: string, note: string, scope: 'one' | 'series') => Promise<unknown>
-  /** Delete a reminder, or a cancelled event, for good. `series` — this date and every later one. */
-  onDelete: (eventId: string, options: { scope: 'one' | 'series' }) => Promise<unknown>
-  /** "Delete all". Leave out to hide the button. */
-  onDeleteAll?: () => Promise<{ count: number }>
-  /** The user's calendar-subscription link. Leave out to hide "Sync". */
-  getFeedLink?: () => Promise<string>
-  /** This person's sync choices. With `onSyncSettingsChange`, the Sync dialog lets them change what is synced. */
-  getSyncSettings?: () => Promise<CalendarSyncSettings>
-  /** Save new sync choices. Reject to keep the old ones (the app reports the failure). */
-  onSyncSettingsChange?: (settings: CalendarSyncSettings) => Promise<unknown>
-  /** Turns an event's stored image path into a URL the browser can load. */
-  resolveImageUrl?: (path: string) => string
+  /** A tile, a list row, or an item opened from outside (bell, push) — the app shows it. */
+  onViewEvent: (event: CalendarEvent) => void
+  /**
+   * "New Event" / "Add Reminder" or a click on an empty day — with a draft
+   * for that day (the app's `draftDefaults` spread in). Leave out to hide create.
+   */
+  onCreateRequest?: (draft: EventDraft) => void
+  /** "Delete all" in the toolbar. Leave out to hide the button. */
+  onDeleteAllRequest?: () => void
+  /** "Sync" in the toolbar. Leave out to hide the button. */
+  onSyncRequest?: () => void
   /** Something the user should hear about — the app words it and shows it its own way. */
   onNotice?: (notice: CalendarNotice) => void
   /** The app's own icons, by name; any left out stay the calendar's defaults (lucide). */
@@ -116,34 +84,22 @@ export interface CalendarProps {
   /** The app's own words for the calendar's buttons and titles; any left out keep the defaults. */
   labels?: CalendarLabelsInput
   title?: string
-  /**
-    What this user may do. An app turns its own roles into these. Editing,
-    cancelling and deleting an item follow its `isOwner`.
-  */
+  /** What this user may do. An app turns its own roles into these. */
   permissions?: CalendarPermissions
-  /** The app's event types. The calendar adds "My Reminder" itself. */
+  /** The app's event types — colours and labels on the grid. */
   eventTypes?: CalendarEventType[]
   /** The app's own draft fields, spread over every new draft. */
   draftDefaults?: Partial<EventDraft> & Record<string, unknown>
-  /** Reasons offered when cancelling an event. */
-  cancelReasons?: CancelReasonOption[]
-  /** Who an event reaches, in the app's words — "people", "attendees". */
-  audienceNoun?: string
-  /** The app's rows in the event panel (below the calendar's own). */
-  renderEventDetails?: (event: CalendarEvent) => ReactNode
   /** The app's controls in the toolbar — its filter, say. */
   toolbarExtras?: ReactNode
-  /** "Fill Data" sample values. Leave out to hide the button. */
-  fillSample?: (draft: EventDraft) => Partial<EventDraft>
   /** Upcoming reminders one person may keep, when they cannot create events. */
   maxUpcomingReminders?: number
   /**
-   * Pehla modal bhar kar aage — app ka agla step (uska apna dialog). Event ke
-   * edit me bhi yahi raasta hai; `isEdit` batata hai ki naya hai ya purana.
+   * May an item be created on a day already gone? Off: a click on a past day,
+   * or the create button while a past day is in view, opens nothing — it sends
+   * `onNotice({ type: 'past-date' })` instead of `onCreateRequest`. Default: on.
    */
-  onNext?: (draft: EventDraft, context: { isEdit: boolean }) => void
-  /** Us din ke baaki events, taaki bahar wala dialog bhi wahi din dikha sake. */
-  onDayEntries?: (entries: DayEntry[]) => void
+  allowPastDates?: boolean
   /*
     Har route ko poora calendar nahi chahiye. Ek jagah sirf mahina dikhana hai,
     doosri jagah banane ka button hi nahi chahiye — isliye har tukda yahan se
@@ -161,54 +117,34 @@ export interface CalendarProps {
   createLabel?: string
   /** "Delete all". */
   showDeleteAll?: boolean
-  /**
-    Event detail ke neeche ke buttons. Calendar apne buttons `defaults` me deta
-    hai; app unke saath apne jod sakta hai (jaise apna koi button), hata
-    sakta hai ya kram badal sakta hai. Na do to sirf calendar ke apne.
-  */
-  eventActions?: (event: CalendarEvent, context: EventActionContext) => ReactNode
 }
 
-const Calendar = forwardRef<CalendarHandle, CalendarProps>((
-  {
-    title,
-    permissions = {},
-    eventTypes = [],
-    draftDefaults,
-    cancelReasons = DEFAULT_CANCEL_REASONS,
-    audienceNoun = 'people',
-    renderEventDetails,
-    toolbarExtras,
-    fillSample,
-    maxUpcomingReminders = LIMITS.upcomingReminders,
-    onNext,
-    onDayEntries,
-    views = ALL_VIEWS,
-    defaultView,
-    showSidebar = true,
-    showCreate = true,
-    createLabel,
-    showDeleteAll = true,
-    eventActions,
-    events,
-    isLoading = false,
-    loadError = null,
-    onRetry,
-    onCreate,
-    onUpdate,
-    onCancel,
-    onDelete,
-    onDeleteAll,
-    getFeedLink,
-    getSyncSettings,
-    onSyncSettingsChange,
-    resolveImageUrl = (path: string) => path,
-    onNotice = () => undefined,
-    icons,
-    labels,
-  },
-  ref,
-) => {
+const Calendar = ({
+  title,
+  permissions = {},
+  eventTypes = [],
+  draftDefaults,
+  toolbarExtras,
+  maxUpcomingReminders = LIMITS.upcomingReminders,
+  allowPastDates = true,
+  views = ALL_VIEWS,
+  defaultView,
+  showSidebar = true,
+  showCreate = true,
+  createLabel,
+  showDeleteAll = true,
+  events,
+  isLoading = false,
+  loadError = null,
+  onRetry,
+  onViewEvent,
+  onCreateRequest,
+  onDeleteAllRequest,
+  onSyncRequest,
+  onNotice = () => undefined,
+  icons,
+  labels,
+}: CalendarProps) => {
   const isMobile = useIsMobile()
   const [month, setMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(new Date())
@@ -224,55 +160,33 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
     () => ({ ...EMPTY_DRAFT, eventType: eventTypes[0]?.value ?? '', ...draftDefaults }) as EventDraft,
     [draftDefaults, eventTypes],
   )
-  const [drawer, setDrawer] = useState<{ open: boolean; draft: EventDraft; editing: CalendarEvent | null }>({
-    open: false,
-    draft: blank,
-    editing: null,
-  })
-  const [notifyMinor, setNotifyMinor] = useState(false)
-  const [openedId, setOpenedId] = useState<string | null>(null)
-  const [cancelling, setCancelling] = useState<CalendarEvent | null>(null)
-  const [deleting, setDeleting] = useState<CalendarEvent | null>(null)
-  const [purging, setPurging] = useState<CalendarEvent | null>(null)
-  const [wiping, setWiping] = useState(false)
-  const [syncing, setSyncing] = useState(false)
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const isPastDay = (eventDate: string) => !allowPastDates && eventDate < today
+
   /*
-    Every change goes through the app's callback. If it resolves, the dialog
-    that asked for it closes; if it throws, the dialog stays open — the app has
-    already told the user why.
+    Creating on a day: never on a past one while past days are off — not from a
+    click in the grid, not from the create button on a past day. The app hears
+    `past-date` and may say why; no modal is asked for.
   */
-  const attempt = async (work: () => Promise<unknown>, after: () => void) => {
-    try {
-      await work()
-      after()
-    } catch {
-      // The app reported the failure; leave the dialog as it is.
+  const pickDayToCreate = (eventDate: string) => {
+    if (isPastDay(eventDate)) {
+      onNotice({ type: 'past-date', date: eventDate })
+      return
     }
+    openCreate(eventDate)
   }
 
+  // The create button, on the day in view.
   const askForCreate = (eventDate: string) =>
-    atReminderLimit ? onNotice({ type: 'reminder-limit', limit: maxUpcomingReminders }) : openCreate(eventDate)
-
-  // The day panel in both dialogs draws the same day; the event being edited is
-  // left out so it does not clash with itself.
-  const dayEntries = events
-    .filter((event) => !event.cancelledAt && event.id !== drawer.editing?.id)
-    .map((event) => ({
-      id: event.id,
-      title: event.draft.title,
-      eventDate: event.draft.eventDate,
-      startTime: event.draft.startTime,
-      endTime: event.draft.endTime,
-    }))
+    atReminderLimit ? onNotice({ type: 'reminder-limit', limit: maxUpcomingReminders }) : pickDayToCreate(eventDate)
 
 
-  useEffect(() => {
-    // Asked for before this calendar was on screen, e.g. from a bell on another page.
-    const waiting = takePendingOpen()
-    if (waiting) setOpenedId(waiting)
 
-    return onOpenEventRequest((eventId) => setOpenedId(eventId))
-  }, [])
+  // Opening an item is the app's: it shows its own view of it.
+  const openItem = (eventId: string) => {
+    const event = events.find((entry) => entry.id === eventId)
+    if (event) onViewEvent(event)
+  }
 
   const goBack = () => {
     if (view === 'day') {
@@ -326,33 +240,6 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
 
   const atReminderLimit = !canCreateEvents && upcomingReminders >= maxUpcomingReminders
 
-  const opened = events.find((event) => event.id === openedId) ?? null
-
-  const linkedOf = (event: CalendarEvent | null): CalendarEvent | null =>
-    event && event.draft.linkedType === 'event' && event.draft.linkedId
-      ? (events.find((entry) => entry.id === event.draft.linkedId) ?? null)
-      : null
-
-  const moveReminder = (reminder: CalendarEvent) => {
-    const linked = linkedOf(reminder)
-    if (!linked) return
-
-    attempt(
-      () =>
-        onUpdate(
-          reminder.id,
-          {
-            ...reminder.draft,
-            eventDate: linked.draft.eventDate,
-            endDate: linked.draft.eventDate,
-            startTime: linked.draft.startTime || reminder.draft.startTime,
-          },
-          { notify: false },
-        ),
-      () => undefined,
-    )
-  }
-
   /*
     What to draw. The app decides which events the user may see and filters
     them by its own fields before handing them over; the calendar only keeps
@@ -371,109 +258,7 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
   }, [events, kinds, eventTypes])
 
   const openCreate = (eventDate: string) =>
-    canCreate &&
-    setDrawer({
-      open: true,
-      draft: canCreateEvents ? newDraftOn(eventDate, blank) : newReminderOn(eventDate, blank),
-      editing: null,
-    })
-
-  const remindMe = (event: CalendarEvent) => {
-    setOpenedId(null)
-    setDrawer({
-      open: true,
-      editing: null,
-      draft: {
-        ...blank,
-        eventType: REMINDER_TYPE,
-        title: event.draft.title,
-        eventDate: event.draft.eventDate,
-        endDate: event.draft.eventDate,
-        startTime: event.draft.startTime,
-        remindBefore: '1_hour',
-        linkedType: 'event',
-        linkedId: event.id,
-      },
-    })
-  }
-
-  const openEdit = (event: CalendarEvent) => {
-    setOpenedId(null)
-    setDrawer({ open: true, draft: event.draft, editing: event })
-  }
-
-  const publish = (draft: EventDraft) =>
-    attempt(() => onCreate(draft), () => setDrawer({ open: false, draft: blank, editing: null }))
-
-  // Whether to tell people is the user's tick; which changes always notify is the app's rule.
-  const applyEdit = (draft: EventDraft, notify: boolean) =>
-    attempt(
-      () => onUpdate((drawer.editing as CalendarEvent).id, draft, { notify }),
-      () => setDrawer({ open: false, draft: blank, editing: null }),
-    )
-
-  const save = (draft: EventDraft) => {
-    if (!drawer.editing) {
-      publish(draft)
-      return
-    }
-
-    applyEdit(draft, notifyMinor)
-  }
-
-  /*
-    The publish dialog lives outside this component — the calendar is shared
-    across apps and knows nothing of their extra fields. It still saves
-    through here, so the create dialog closes and the message is said in one
-    place. This is the one door it gets.
-  */
-  useImperativeHandle(ref, () => ({
-    save,
-    // Next par drawer chhupta hai par `editing` pakde rehta hai, isliye Back par edit, edit hi rehta hai.
-    openEntry: (draft: EventDraft) => setDrawer((current) => ({ open: true, draft, editing: current.editing })),
-    closeEntry: () => setDrawer({ open: false, draft: blank, editing: null }),
-  }))
-
-  useEffect(() => {
-    onDayEntries?.(dayEntries)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events, drawer.editing?.id])
-
-  const confirmCancel = (reason: string, note: string, scope: 'one' | 'series' = 'one') =>
-    attempt(
-      () => onCancel((cancelling as CalendarEvent).id, reason, note, scope),
-      () => {
-        setCancelling(null)
-        setOpenedId(null)
-      },
-    )
-
-  const confirmWipe = () =>
-    attempt(
-      () => (onDeleteAll as NonNullable<typeof onDeleteAll>)(),
-      () => {
-        setWiping(false)
-        setOpenedId(null)
-      },
-    )
-
-  const confirmPurge = () =>
-    attempt(
-      () => onDelete((purging as CalendarEvent).id, { scope: 'one' }),
-      () => {
-        setPurging(null)
-        setOpenedId(null)
-      },
-    )
-
-  const confirmDelete = (scope: 'one' | 'series') =>
-    attempt(
-      () => onDelete((deleting as CalendarEvent).id, { scope }),
-      () => {
-        setDeleting(null)
-        setOpenedId(null)
-      },
-    )
+    canCreate && onCreateRequest?.(canCreateEvents ? newDraftOn(eventDate, blank) : newReminderOn(eventDate, blank))
 
   return (
     <CalendarProvider icons={icons} labels={labels}>
@@ -514,8 +299,8 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
             dayCount={dayCount}
             rangeLabel={rangeLabel}
             stepName={stepName}
-            showCreate={showCreate && canCreate}
-            showDeleteAll={showDeleteAll && Boolean(onDeleteAll)}
+            showCreate={showCreate && canCreate && Boolean(onCreateRequest)}
+            showDeleteAll={showDeleteAll && Boolean(onDeleteAllRequest)}
             createLabel={createLabel}
             onCreate={() => askForCreate(format(selectedDay, 'yyyy-MM-dd'))}
             onBack={goBack}
@@ -524,8 +309,8 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
             onDayCountChange={setDayCount}
             onMonthChange={setMonth}
             onPickDay={setSelectedDay}
-            onWipe={() => setWiping(true)}
-            onSync={getFeedLink ? () => setSyncing(true) : undefined}
+            onWipe={() => onDeleteAllRequest?.()}
+            onSync={onSyncRequest}
             toolbarExtras={toolbarExtras}
           />
 
@@ -548,10 +333,10 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
                 <DaysGrid
                   days={shownDays}
                   items={visible}
-                  onOpen={(item) => setOpenedId(item.id)}
+                  onOpen={(item) => openItem(item.id)}
                   onPickDate={(day) => {
                     setSelectedDay(day)
-                    openCreate(format(day, 'yyyy-MM-dd'))
+                    pickDayToCreate(format(day, 'yyyy-MM-dd'))
                   }}
                 />
               )}
@@ -560,20 +345,20 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
                   month={month}
                   items={visible}
                   selected={selectedDay}
-                  onOpen={(item) => setOpenedId(item.id)}
+                  onOpen={(item) => openItem(item.id)}
                   onPickDate={(day) => {
                     setSelectedDay(day)
-                    openCreate(format(day, 'yyyy-MM-dd'))
+                    pickDayToCreate(format(day, 'yyyy-MM-dd'))
                   }}
                 />
               )}
-              {view === 'list' && <ListView month={month} items={visible} onOpen={(item) => setOpenedId(item.id)} />}
+              {view === 'list' && <ListView month={month} items={visible} onOpen={(item) => openItem(item.id)} />}
             </>
           )}
         </section>
       </div>
 
-      {showCreate && canCreate && (
+      {showCreate && canCreate && onCreateRequest && (
       <button
         type="button"
         aria-label={createLabel ?? (canCreateEvents ? words.toolbar.newEvent : words.toolbar.addReminder)}
@@ -586,102 +371,10 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
       </button>
       )}
 
-      <CalendarEntryDialog
-        open={drawer.open}
-        initial={drawer.draft}
-        isEdit={Boolean(drawer.editing)}
-        reminderOnly={!canCreateEvents}
-        eventTypes={eventTypes}
-        audienceNoun={audienceNoun}
-        fillSample={fillSample}
-        canCancelEvent={Boolean(
-          drawer.editing &&
-          !drawer.editing.cancelledAt &&
-          drawer.editing.draft.eventType !== REMINDER_TYPE &&
-          drawer.editing.isOwner,
-        )}
-        canDeleteReminder={Boolean(
-          drawer.editing && drawer.editing.draft.eventType === REMINDER_TYPE && drawer.editing.isOwner,
-        )}
-        onDeleteReminder={() => {
-          const editing = drawer.editing
-          setDrawer({ open: false, draft: blank, editing: null })
-          setDeleting(editing)
-        }}
-        onCancelEvent={() => {
-          const editing = drawer.editing
-          setDrawer({ open: false, draft: blank, editing: null })
-          setCancelling(editing)
-        }}
-        dayEntries={dayEntries}
-        onClose={() => setDrawer({ open: false, draft: blank, editing: null })}
-        onSave={save}
-        /*
-          Ek samay ek hi dialog. Next par ye chhup jaata hai — par apna draft
-          pakde rehta hai, isliye Back dabane par wahi form wapas milta hai,
-          bhara hua. Do dialog ek saath dikhane se dono ke header aur footer
-          aapas me takra rahe the.
-        */
-        onNext={canCreateEvents && onNext ? (draft) => {
-          setDrawer((current) => ({ ...current, open: false }))
-          onNext(draft, { isEdit: Boolean(drawer.editing) })
-        } : undefined}
-        notifyMinor={notifyMinor}
-        onNotifyMinorChange={setNotifyMinor}
-        notifyCount={drawer.editing?.reach ?? 0}
-      />
-
-
-      {getFeedLink && (
-        <SyncDialog
-          open={syncing}
-          getFeedLink={getFeedLink}
-          getSyncSettings={getSyncSettings}
-          onSyncSettingsChange={onSyncSettingsChange}
-          onNotice={onNotice}
-          calendarName={title ?? words.title}
-          onClose={() => setSyncing(false)}
-        />
-      )}
-
-      <CalendarDialogs
-        resolveImageUrl={resolveImageUrl}
-        canCreateEvents={canCreateEvents}
-        canRemind={permissions.createReminders !== false}
-        eventTypes={eventTypes}
-        cancelReasons={cancelReasons}
-        audienceNoun={audienceNoun}
-        renderDetails={renderEventDetails}
-        opened={opened}
-        linked={linkedOf(opened)}
-        cancelling={cancelling}
-        deleting={deleting}
-        purging={purging}
-        wiping={wiping}
-        totalCount={events.length}
-        onOpenEvent={setOpenedId}
-        renderActions={
-          eventActions
-            ? (event, defaults) => eventActions(event, { defaults, close: () => setOpenedId(null) })
-            : undefined
-        }
-        onEdit={openEdit}
-        onRemindMe={remindMe}
-        onMoveReminder={moveReminder}
-        onAskCancel={setCancelling}
-        onAskDelete={setDeleting}
-        onAskPurge={setPurging}
-        onAskWipe={setWiping}
-        onConfirmCancel={confirmCancel}
-        onConfirmDelete={confirmDelete}
-        onConfirmPurge={confirmPurge}
-        onConfirmWipe={confirmWipe}
-      />
-
     </div>
     </CalendarProvider>
   )
-})
+}
 
 Calendar.displayName = 'Calendar'
 

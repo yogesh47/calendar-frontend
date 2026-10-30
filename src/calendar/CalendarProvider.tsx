@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
+import type { ReactNode } from 'react'
+
+import type { CalendarIcons } from './icons'
 import { DEFAULT_ICONS, IconsContext } from './icons'
 import { LabelsContext, mergeLabels } from './labels'
-import type { ReactNode } from 'react'
-import type { CalendarIcons } from './icons'
 import type { CalendarLabels, CalendarLabelsInput } from './labels'
 
 export interface CalendarProviderProps {

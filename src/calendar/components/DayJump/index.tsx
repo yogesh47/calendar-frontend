@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { format, setMonth, setYear } from 'date-fns'
-import { ChevronDown, ChevronLeft, ChevronRight } from '../../icons'
-import { Button } from '../../shared/ui/Button'
-import { Popover, PopoverContent, PopoverTrigger } from '../../shared/ui/Popover'
+
 import { cn } from '../../lib/utils'
-import MiniCalendar from '../MiniCalendar'
 import { useLabels } from '../../labels'
+import MiniCalendar from '../MiniCalendar'
+import { Button } from '../../shared/ui/Button'
+import { ChevronDown, ChevronLeft, ChevronRight } from '../../icons'
+import { Popover, PopoverContent, PopoverTrigger } from '../../shared/ui/Popover'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 

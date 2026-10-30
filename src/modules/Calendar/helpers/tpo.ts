@@ -7,15 +7,26 @@ export const rulesFor = (eventType: TpoEventType) =>
 
 export const labelFor = (eventType: TpoEventType): string => rulesFor(eventType).label
 
+// Rich text is compared by what it says: the editor hands back "<p></p>" for an
+// empty box and may re-wrap the same words, which is not a change.
+const RICH_TEXT_FIELDS: (keyof TpoDraft)[] = ['description', 'note']
+const plainText = (html: unknown): string =>
+  String(html ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 export const changedFields = (before: TpoDraft, after: TpoDraft): (keyof TpoDraft)[] =>
-  (Object.keys(after) as (keyof TpoDraft)[]).filter(
-    (field) => JSON.stringify(before[field]) !== JSON.stringify(after[field]),
+  (Object.keys(after) as (keyof TpoDraft)[]).filter((field) =>
+    RICH_TEXT_FIELDS.includes(field)
+      ? plainText(before[field]) !== plainText(after[field])
+      : JSON.stringify(before[field]) !== JSON.stringify(after[field]),
   )
 
+// Two fields can share a label (the type and an "Other" type's name), so each label is said once.
 export const changedSummary = (before: TpoDraft, after: TpoDraft): string =>
-  changedFields(before, after)
-    .map((field) => IMPORTANT_FIELD_LABEL[field] ?? field)
-    .join(', ')
+  [...new Set(changedFields(before, after).map((field) => IMPORTANT_FIELD_LABEL[field] ?? field))].join(', ')
 
 export const onlyMinorChanged = (before: TpoDraft, after: TpoDraft): boolean => {
   const changed = changedFields(before, after)

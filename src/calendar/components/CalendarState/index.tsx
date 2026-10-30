@@ -1,6 +1,6 @@
-import { CalendarDays, Plus, RefreshCw, TriangleAlert } from '../../icons'
-import { Button } from '../../shared/ui/Button'
 import { useLabels } from '../../labels'
+import { Button } from '../../shared/ui/Button'
+import { CalendarDays, Plus, RefreshCw, TriangleAlert } from '../../icons'
 
 const Shell = ({ children }: { children: React.ReactNode }) => (
   <div className="grid min-h-[22rem] flex-1 place-items-center rounded-xl border [background-color:var(--ds-color-bg-surface)]">

@@ -1,4 +1,5 @@
 import { endOfDay, isSameDay, isWithinInterval, startOfDay } from 'date-fns'
+
 import type { CalendarItem } from '../types'
 
 export const spansDays = (item: CalendarItem): boolean =>

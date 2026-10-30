@@ -4,14 +4,9 @@ import { Label } from '@/components/ui/Label'
 import { Button } from '@/components/ui/Button'
 import { Combobox } from '@/components/ui/MultiSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/Dialog'
+import { Link2 } from 'lucide-react'
+import { Dialog, DialogContent } from '@/components/ui/Dialog'
+import { ModalBody, ModalCard, ModalFooter, ModalHeader, modalContentClass } from '@/modules/Calendar/components/Modal'
 import { CAMPUS_JOB_OPTIONS, linkedJobSchema } from './LinkJobDialog.constants'
 import type { LinkedJob } from '@/modules/Calendar/types/tpo'
 
@@ -39,13 +34,11 @@ const LinkJobDialog = ({ open, initial, onClose, onLink }: LinkJobDialogProps) =
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="sm:max-w-[28rem] [background-color:var(--ds-color-bg-surface)]">
-        <DialogHeader>
-          <DialogTitle>Link a Job</DialogTitle>
-          <DialogDescription className="sr-only">Link a campus job or paste a job link</DialogDescription>
-        </DialogHeader>
+      <DialogContent className={modalContentClass('sm')}>
+        <ModalHeader icon={<Link2 />} title="Link a Job" srDescription="Link a campus job or paste a job link" />
 
-        <div className="space-y-3.5">
+        <ModalBody>
+        <ModalCard>
           <RadioGroup
             className="flex flex-row gap-6"
             value={form.values.kind}
@@ -111,14 +104,15 @@ const LinkJobDialog = ({ open, initial, onClose, onLink }: LinkJobDialogProps) =
               )}
             </div>
           )}
-        </div>
+        </ModalCard>
+        </ModalBody>
 
-        <DialogFooter>
+        <ModalFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={() => form.handleSubmit()}>Link Job</Button>
-        </DialogFooter>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   )

@@ -16,8 +16,9 @@ import {
   subMonths,
   subYears,
 } from 'date-fns'
-import { ChevronDown, ChevronLeft, ChevronRight } from '../../icons'
+
 import { cn } from '../../lib/utils'
+import { ChevronDown, ChevronLeft, ChevronRight } from '../../icons'
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 

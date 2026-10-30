@@ -1,7 +1,8 @@
 import { format, isSameMonth } from 'date-fns'
+
 import ItemTile from '../ItemTile'
-import StatusBadge from './components/StatusBadge'
 import type { CalendarItem } from '../../types'
+import StatusBadge from './components/StatusBadge'
 
 /**
  * The same items as a flat agenda, grouped by day.

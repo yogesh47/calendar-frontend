@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
-import { cn } from '../../../lib/utils';
+
 import { Spinner } from '../Spinner';
-import { buttonVariants, ICON_ONLY, HOVER_EFFECT, SPINNER_SIZE } from './Button.constants';
+import { cn } from '../../../lib/utils';
 import type { ButtonProps } from './Button.types';
+import { buttonVariants, ICON_ONLY, HOVER_EFFECT, SPINNER_SIZE } from './Button.constants';
 
 export * from './Button.constants';
 export type { ButtonHoverEffect, ButtonProps } from './Button.types';

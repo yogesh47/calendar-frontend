@@ -58,15 +58,6 @@ export type TpoEvent = CalendarEvent<TpoDraft> & {
   deadlineCounts?: { eligible: number; applied: number; not_applied: number }
 }
 
-export type AudienceDiff = {
-  kept: number
-  added: number
-  removed: number
-  keptGroups: string[]
-  addedGroups: string[]
-  removedGroups: string[]
-}
-
 export type CalendarFilters = {
   types: string[]
   courses: string[]

@@ -597,7 +597,8 @@ sirf edit par dobara nikalti hai.
 |---|---|---|---|
 | `event_id` | UUID | PK | `default=uuid.uuid4` |
 | `org_id` | UUID | no | index |
-| `event_type` | String | no | `ppt` / `company_visit` / `online_assessment` / `training` / `orientation` / `practice_test` / `deadline` / `other` — **publish ke baad badalta nahi** |
+| `event_type` | String | no | `ppt` / `company_visit` / `online_assessment` / `training` / `orientation` / `practice_test` / `deadline` / `other` — edit par doosre event type me badal sakta hai (nudges reschedule), par **`my_reminder` me kabhi nahi** (403) |
+| `other_type` | String(80) | yes | TPO ka apna naam jab `event_type = other` (wahan required, non-blank); baaki har type par `null` |
 | `title` | String(120) | no | |
 | `company_id` | UUID | yes | SkillsBridge ka id — **FK nahi**, naam dikhate waqt API se |
 | `event_date` | Date | no | org ke timezone ka din |
@@ -739,6 +740,7 @@ class CalendarEvent(Base):
     event_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     org_id = Column(UUID(as_uuid=True), nullable=False)
     event_type = Column(String, nullable=False)
+    other_type = Column(String(80), nullable=True)            # sirf event_type == "other" par — TPO ka apna naam
     title = Column(String(120), nullable=False)
     company_id = Column(UUID(as_uuid=True), nullable=True)   # SkillsBridge ka id — FK nahi, wo DB alag hai
 
@@ -933,6 +935,7 @@ class LinkedJobIn(BaseModel):
 
 class EventCreate(BaseModel):
     event_type: EventType
+    other_type: Optional[str] = Field(None, max_length=80)   # "Other" ka naam
     title: str = Field(..., min_length=1, max_length=120)
     company_id: Optional[UUID] = None
     event_date: date
@@ -947,6 +950,14 @@ class EventCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_by_type(self):
+        # "Other" akela kuch nahi batata — uska naam chahiye; baaki type par naam drop.
+        if self.event_type == EventType.other:
+            self.other_type = (self.other_type or "").strip()
+            if not self.other_type:
+                raise ValueError("Specify the event type")   # 422, field other_type ("Event type name")
+        else:
+            self.other_type = None
+
         all_day = self.event_type == EventType.deadline
 
         if not all_day:
@@ -999,6 +1010,7 @@ class CalendarItemOut(BaseModel):
     item_id: UUID
     item_kind: str                 # tpo_event | deadline | my_reminder | nudge
     event_type: Optional[str]
+    other_type: Optional[str]      # "Other" ka naam; baaki type par null
     title: str
     event_date: date
     start_at: Optional[datetime]   # UTC, 'Z' ke saath
@@ -1079,10 +1091,15 @@ def create_event(db, org_id, tpo_id, payload) -> tuple[CalendarEvent, int]:
        notification job queue karo, nudges schedule karo.
        Doosra value = kitne recipient bane, 'X students notified' ke liye."""
 
-def update_event(db, event, tpo_id, payload, notify_minor: bool):
-    """Ownership check. event_type lock. past event block.
+def update_event(db, event, tpo_id, payload):
+    """Ownership check. Cancelled event block.
+       event_type doosre event type me badal sakta hai (nudges reschedule),
+       par `my_reminder` me nahi → 403 "An event cannot be changed into a reminder".
        audience diff nikalo → added / removed / kept.
-       important change ho to notify pakka, minor par notify_minor par."""
+       payload.notify_on_change (frontend: !onlyMinorChanged || ticked):
+         True  → students ke liye phir unread, "<title> has been updated: <summary>."
+         False → jinhone padh li thi unki read hi rahe (seen_at bump),
+                 message "<title> details have been updated."; jinhone nahi padhi, unread hi."""
 
 def cancel_event(db, event, tpo_id, reason, note):
     """Ownership + end_at se pehle ka check.
@@ -1121,7 +1138,7 @@ def should_send(db, nudge) -> tuple[bool, str]:  # bhejne se pehle dobara check
 | POST | `/calendar/events` | create | 05, 06 |
 | GET | `/calendar/events/{id}` | detail | 13 |
 | PATCH | `/calendar/events/{id}` | edit (sirf creator) | 10 |
-| POST | `/calendar/events/{id}/preview-changes` | audience diff, save se pehle | 10 |
+| POST | `/calendar/events/{id}/preview-changes` | audience diff, save se pehle — *nahi bana; frontend ka ReviewChanges dialog bhi hata diya. Audience alag `PUT /calendar/events/{id}/audience` se (`AudienceDialog`)* | 10 |
 | POST | `/calendar/events/{id}/cancel` | cancel (sirf creator) | 11 |
 
 ### Student
@@ -1164,7 +1181,8 @@ def should_send(db, nudge) -> tuple[bool, str]:  # bhejne se pehle dobara check
 | Mode / venue / platform | type ke hisaab se | Pydantic |
 | Audience | teeno list me ≥ 1 | Pydantic |
 | Count > 0 | 0 par publish mana | Service |
-| event_type lock | edit par badal nahi sakta | Service |
+| Other ka naam | `event_type = other` par `other_type` required (≤ 80, non-blank) → 422 "Specify the event type"; baaki type par drop | Pydantic |
+| Event → reminder | edit par `my_reminder` me nahi badal sakta → 403; event type aapas me badal sakte hain | Service |
 | Ownership | edit / cancel sirf creator | Service |
 | Past event | edit / cancel nahi | Service |
 | Reminder limit | student ke 50 upcoming | Service |
@@ -1233,6 +1251,16 @@ Bell hamesha jaati hai (wahi to notification record hai).
 
 Do rows me push band hai — BRD me yahi likha hai, aur wahi sahi hai: "purani
 notification ignore karo" wali baat phone buzz karne layak nahi.
+
+**Minor update ka bell par asar — `notify_on_change`.** Edit par frontend
+`notify_on_change = !onlyMinorChanged || ticked` bhejta hai (minor = sirf title,
+description, company; ticked = "Notify students about this change"). Column
+`calendar_event.notify_on_change` me rehta hai:
+
+| `notify_on_change` | Jinhone notification padh li thi | Jinhone nahi padhi | Message |
+|---|---|---|---|
+| `true` | phir **unread** | unread | `<title> has been updated: <summary>.` |
+| `false` | **read hi rehti hai** (`seen_at` bump) | unread hi | `<title> details have been updated.` |
 
 ### Calendar ka message shape
 
@@ -1469,6 +1497,10 @@ CAMPUS_CALENDAR_ENABLED = environ.get("CAMPUS_CALENDAR_ENABLED", "true").lower()
 
 Apni service ka apna Alembic — **ek hi DB, ek hi migration chain**. SkillsBridge
 wala tenant/public ka do-alag-alembic jhanjhat yahan nahi hai.
+
+> Abhi ki aakhri migration: `setup/migrations/versions/a1c4e7f2b905_other_event_type_name.py`
+> (revises `b8f6d0e2a475`) — `calendar_event.other_type` (varchar 80) jodta hai.
+> Lagane ke liye: `make db-up`.
 
 ```bash
 # pehli baar
