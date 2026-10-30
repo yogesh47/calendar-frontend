@@ -44,7 +44,7 @@ const VIEW_LABELS: { id: CalendarView; label: string }[] = [
 export interface CalendarHandle {
   /** Jo draft publish dialog se poora hua, use yahin save kiya jaata hai. */
   save: (draft: EventDraft) => void
-  /** Publish dialog se "Back" — wahi draft le kar calendar ka apna modal wapas kholo. */
+  /** Publish dialog se "Back" — wahi draft le kar calendar ka apna modal wapas kholo (edit ho to edit hi rahe). */
   openEntry: (draft: EventDraft) => void
   /** Dono modal ek saath band karne ke liye. */
   closeEntry: () => void
@@ -137,8 +137,11 @@ export interface CalendarProps {
   fillSample?: (draft: EventDraft) => Partial<EventDraft>
   /** Upcoming reminders one person may keep, when they cannot create events. */
   maxUpcomingReminders?: number
-  /** Pehla modal bhar kar aage — app ka agla step (uska apna dialog). */
-  onNext?: (draft: EventDraft) => void
+  /**
+   * Pehla modal bhar kar aage — app ka agla step (uska apna dialog). Event ke
+   * edit me bhi yahi raasta hai; `isEdit` batata hai ki naya hai ya purana.
+   */
+  onNext?: (draft: EventDraft, context: { isEdit: boolean }) => void
   /** Us din ke baaki events, taaki bahar wala dialog bhi wahi din dikha sake. */
   onDayEntries?: (entries: DayEntry[]) => void
   /*
@@ -426,7 +429,8 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
   */
   useImperativeHandle(ref, () => ({
     save,
-    openEntry: (draft: EventDraft) => setDrawer({ open: true, draft, editing: null }),
+    // Next par drawer chhupta hai par `editing` pakde rehta hai, isliye Back par edit, edit hi rehta hai.
+    openEntry: (draft: EventDraft) => setDrawer((current) => ({ open: true, draft, editing: current.editing })),
     closeEntry: () => setDrawer({ open: false, draft: blank, editing: null }),
   }))
 
@@ -620,7 +624,7 @@ const Calendar = forwardRef<CalendarHandle, CalendarProps>((
         */
         onNext={canCreateEvents && onNext ? (draft) => {
           setDrawer((current) => ({ ...current, open: false }))
-          onNext(draft)
+          onNext(draft, { isEdit: Boolean(drawer.editing) })
         } : undefined}
         notifyMinor={notifyMinor}
         onNotifyMinorChange={setNotifyMinor}

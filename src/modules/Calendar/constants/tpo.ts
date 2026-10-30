@@ -81,6 +81,7 @@ export const REPEAT_MAX_OCCURRENCES = 52
 export const MINOR_FIELDS: (keyof TpoDraft)[] = ['title', 'description', 'company']
 
 export const IMPORTANT_FIELD_LABEL: Partial<Record<keyof TpoDraft, string>> = {
+  eventType: 'Event Type',
   eventDate: 'Date',
   startTime: 'Start Time',
   endTime: 'End Time',
@@ -89,6 +90,7 @@ export const IMPORTANT_FIELD_LABEL: Partial<Record<keyof TpoDraft, string>> = {
   onlinePlatform: 'Platform',
   audience: 'Target Audience',
   title: 'Title',
+  otherType: 'Event Type',
   description: 'Description',
   company: 'Company',
   linkedJob: 'Linked Job',
@@ -105,6 +107,7 @@ export const EMPTY_AUDIENCE: Audience = {
 export const EMPTY_DRAFT: TpoDraft = {
   ...CALENDAR_EMPTY_DRAFT,
   eventType: 'ppt',
+  otherType: '',
   company: '',
   mode: 'offline',
   venue: '',
@@ -116,6 +119,7 @@ export const EMPTY_DRAFT: TpoDraft = {
 /** What only a TPO draft has — handed to the calendar as `draftDefaults`. */
 export const TPO_DRAFT_DEFAULTS = {
   eventType: EMPTY_DRAFT.eventType,
+  otherType: '',
   company: '',
   mode: EMPTY_DRAFT.mode,
   venue: '',
@@ -160,6 +164,8 @@ export const CANCEL_REASONS: CancelReasonOption[] = [
 export const ASSESSMENT_EMAIL_NOTE = 'The test link will be sent to your registered email.'
 
 export const VENUE_LENGTH = 200
+
+export const OTHER_TYPE_LENGTH = 80
 
 export const EMPTY_FILTERS: CalendarFilters = {
   types: [],

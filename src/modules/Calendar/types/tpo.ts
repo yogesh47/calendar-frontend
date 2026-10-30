@@ -39,6 +39,8 @@ export type Audience = {
 /** The calendar's draft plus everything only a TPO event has. */
 export type TpoDraft = EventDraft & {
   eventType: TpoEventType
+  /** What an "other" event actually is, in the TPO's words. Empty for every other type. */
+  otherType: string
   company: string
   mode: EventMode
   venue: string

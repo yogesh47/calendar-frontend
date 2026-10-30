@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { format } from 'date-fns'
-import { AlignLeft, Bell, CalendarPlus, Clock, Info, Lock, Repeat, StickyNote, Tag, Trash2, TriangleAlert, Type, Wand2 } from '../../icons'
+import { AlignLeft, Bell, CalendarPlus, Clock, Repeat, StickyNote, Trash2, TriangleAlert, Type, Wand2 } from '../../icons'
 import { useFormik, validateYupSchema, yupToFormErrors } from 'formik'
 import { cn } from '../../lib/utils'
 import { Button } from '../../shared/ui/Button'
@@ -26,12 +26,9 @@ import RepeatField from './components/RepeatField'
 import { useLabels } from '../../labels'
 import { FieldError, Row } from '../parts'
 import { REMIND_BEFORE_OPTIONS } from './CalendarEntryDialog.constants'
-import { DEFAULT_REMIND_BEFORE } from './CalendarEntryDialog.constants'
 import type { DayEntry } from '../../Calendar.types'
 import { REMINDER_TYPE } from '../../types'
 import type { CalendarEventType, EventDraft } from '../../types'
-
-const REMINDER_PRIVACY = 'Only you can see this. Nobody else is notified.'
 
 interface CalendarEntryDialogProps {
   open: boolean
@@ -55,16 +52,9 @@ interface CalendarEntryDialogProps {
   onCancelEvent?: () => void
   onDeleteReminder?: () => void
   onSave: (draft: EventDraft) => void
-  /** The app's next step for an event (its own dialog). Without it, the event is saved here. */
+  /** The app's next step for an event (its own dialog), on create and on edit. Without it, the event is saved here. */
   onNext?: (draft: EventDraft) => void
 }
-
-const InfoNote = ({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) => (
-  <p className="flex gap-2 rounded-lg border px-3 py-2 text-sm [background-color:var(--ds-color-info-subtle)] [border-color:var(--ds-color-info)]/20 [color:var(--ds-color-text-secondary)]">
-    {icon ?? <Info className="mt-0.5 size-3.5 shrink-0 [color:var(--ds-color-info)]" />}
-    <span>{children}</span>
-  </p>
-)
 
 const clock = (value: string): string =>
   value ? format(new Date(`2000-01-01T${value}:00`), 'h:mm a') : ''
@@ -126,11 +116,13 @@ const CalendarEntryDialog = ({
     outside, where the calendar does not reach.
   */
   /*
-    Reminder yahin khatam ho jaata hai. Uske paas app ki koi extra field nahi —
-    agla modal uske liye khali hi khulta, isliye wo bhejna hi nahi.
-    Sirf asli event aage jaata hai.
+    Organiser ka item agle modal tak jaata hai — wahi kism (event type, ya
+    "My Reminder") dikhti hai aur event ki baaki fields bhi. Naya item har baar
+    "Next" se aage jaata hai; event ka edit bhi, taaki company, venue, linked
+    job wagairah badle ja sakein. Reminder ka edit, aur sirf-reminder wala
+    calendar, ek hi modal me rehte hain — unki koi aur field hai hi nahi.
   */
-  const handsOn = !isEdit && !reminderOnly && !isReminder && Boolean(onNext)
+  const handsOn = !reminderOnly && Boolean(onNext) && !(isEdit && isReminder)
   const count = isEdit && !isReminder ? notifyCount : 0
   // The day panel on the right stays for everyone — reminder and
   // event, first step and second. A date is all it needs.
@@ -152,32 +144,6 @@ const CalendarEntryDialog = ({
     const errors = form.errors as Record<string, unknown>
 
     return errors[field] as string | undefined
-  }
-
-  /*
-    Kaunsi kism ka item hai — yahi tay karta hai ki aage kya poocha jayega.
-    Kism badalne par uski apni fields saaf kar di jaati hain, taaki ek kism ka
-    bacha hua data doosri me na chala jaye.
-  */
-  const pickType = (eventType: string) => {
-    const nextTimed = isTimed(eventTypes, eventType)
-    /*
-      Organiser ka draft event ka hota hai, aur usme "Remind me" khali rehta hai.
-      Kism badal kar reminder karne par wo khali hi reh jaata tha, aur backend
-      bina `remind_before` ke koi nudge schedule hi nahi karta — isliye reminder
-      banta to tha, par uski ghanti kabhi bajti hi nahi thi.
-    */
-    const becameReminder = eventType === REMINDER_TYPE
-    form.setValues({
-      ...draft,
-      eventType,
-      remindBefore:
-        becameReminder && (!draft.remindBefore || draft.remindBefore === 'none')
-          ? DEFAULT_REMIND_BEFORE
-          : draft.remindBefore,
-      startTime: nextTimed || becameReminder ? draft.startTime : '',
-      endTime: nextTimed ? draft.endTime : '',
-    })
   }
 
   // A time an hour out, then whatever sample the app gives for the rest.
@@ -330,25 +296,6 @@ const CalendarEntryDialog = ({
 
                 {/* No rule between rows — the icons and the spacing already separate them. */}
                 <div className="pb-2">
-                  {!reminderOnly && (
-                    <Row icon={Tag} label="Event type">
-                      <Combobox
-                        searchable={false}
-                        disabled={isEdit}
-                        value={draft.eventType}
-                        placeholder="Select event type"
-                        options={[
-                          ...eventTypes.map((option) => ({ value: option.value, label: option.label })),
-                          { value: REMINDER_TYPE, label: labels.entryDialog.myReminder },
-                        ]}
-                        onChange={pickType}
-                      />
-                      {isReminder && (
-                        <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
-                      )}
-                    </Row>
-                  )}
-
                   {/*
                     The date and both times read as one sentence — "Wed 28 Oct,
                     12:00 PM – 1:00 PM" — because they are one fact.

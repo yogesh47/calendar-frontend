@@ -23,12 +23,12 @@ import { labelFor, rulesFor } from '../../helpers/tpo'
 import ImageField from './components/ImageField'
 import AudienceFields, { audienceIsComplete, audienceIsEmpty } from '../AudienceFields'
 import { countAudience } from '../../services/audience'
-import { FINAL_YEAR_BATCH, REMINDER_PRIVACY, VENUE_LENGTH } from '../../constants/tpo'
+import { EVENT_TYPE_OPTIONS, FINAL_YEAR_BATCH, OTHER_TYPE_LENGTH, REMINDER_PRIVACY, VENUE_LENGTH } from '../../constants/tpo'
 import { COMPANY_OPTIONS } from '../../constants'
 import { MODE_OPTIONS } from './PublishEventDialog.constants'
-import { InfoNote, Required, clock } from '../parts'
+import { InfoNote, Required, Section, clock } from '../parts'
 import type { DayEntry } from '@/calendar'
-import type { TpoDraft, EventMode, LinkedJob } from '../../types/tpo'
+import type { TpoDraft, TpoEventType, EventMode, LinkedJob } from '../../types/tpo'
 
 interface PublishEventDialogProps {
   open: boolean
@@ -76,6 +76,8 @@ const PublishEventDialog = ({
       // Title, date and time were checked on the calendar's own step; this one checks what it asks.
       const errors: Record<string, string> = {}
       const rules = rulesFor(values.eventType)
+
+      if (values.eventType === 'other' && !values.otherType.trim()) errors.otherType = 'Enter the event type.'
 
       if (rules.needsMode) {
         if (!values.mode) errors.mode = 'Select a mode.'
@@ -141,7 +143,33 @@ const PublishEventDialog = ({
   }
 
   /*
-    Pehle modal ne title, kism aur din de diye hain — yahan unhe haath nahi
+    Kism yahin chuni jaati hai. Badalne par uske hisaab se waqt theek kiya jaata
+    hai: all-day kism (Deadline) ka koi time nahi hota, aur waapas timed kism
+    par aane par pehle modal ke times laut aate hain. Reminder ki ghanti
+    `none` par kabhi nahi bajti, isliye use ek ghanta pehle ki ghanti milti hai,
+    aur event ki description uska note ban jaati hai.
+  */
+  const pickType = (value: string) => {
+    const eventType = value as TpoEventType
+    const nextTimed = rulesFor(eventType).needsTime
+    const toReminder = eventType === 'my_reminder'
+
+    form.setValues({
+      ...draft,
+      eventType,
+      // The name belongs to "Other" only; switching away drops it.
+      otherType: eventType === 'other' ? draft.otherType : '',
+      startTime: nextTimed || toReminder ? draft.startTime || initial.startTime : '',
+      endTime: nextTimed ? draft.endTime || initial.endTime : '',
+      endDate: nextTimed ? draft.endDate || initial.endDate : draft.eventDate,
+      remindBefore:
+        toReminder && (!draft.remindBefore || draft.remindBefore === 'none') ? '1_hour' : draft.remindBefore,
+      note: toReminder && !draft.note ? draft.description : draft.note,
+    })
+  }
+
+  /*
+    Pehle modal ne title aur din de diye hain — yahan unhe haath nahi
     lagaya jaata. Ye sirf wahi bharta hai jo is screen par poocha ja raha hai.
   */
   const fillDummy = () => {
@@ -193,7 +221,7 @@ const PublishEventDialog = ({
         className={cn(
           'max-h-[92vh] max-w-none grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:p-0 [background-color:var(--ds-color-bg-surface)]',
           '[&>button]:top-5',
-          'w-[min(40rem,calc(100vw-1rem))]',
+          'w-[min(46rem,calc(100vw-1rem))]',
         )}
         onInteractOutside={(event) => event.preventDefault()}
       >
@@ -205,14 +233,21 @@ const PublishEventDialog = ({
                 <CalendarPlus className="size-5" />
               </span>
               <div className="min-w-0">
-                <DialogTitle className="whitespace-nowrap">Publish Event</DialogTitle>
+                <DialogTitle className="whitespace-nowrap">
+                  {isEdit ? 'Edit Event' : isReminder ? 'Add Reminder' : 'Publish Event'}
+                </DialogTitle>
                 {/*
-                  Title aur kism pehle modal me chuni ja chuki hain, isliye yahan
-                  wo field ban kar nahi aatin — par dikhni chahiye, warna banda
-                  bhool jaata hai ki wo kya publish kar raha hai.
+                  Title pehle modal me likha ja chuka hai, isliye yahan wo field
+                  ban kar nahi aata — par dikhna chahiye, warna banda bhool
+                  jaata hai ki wo kya publish kar raha hai.
                 */}
                 <DialogDescription className="truncate text-sm">
-                  {[draft.title || 'Untitled', !isReminder && labelFor(draft.eventType)].filter(Boolean).join(' · ')}
+                  {[
+                    draft.title || 'Untitled',
+                    !isReminder && (draft.eventType === 'other' && draft.otherType.trim() ? draft.otherType.trim() : labelFor(draft.eventType)),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </DialogDescription>
               </div>
             </div>
@@ -240,33 +275,11 @@ const PublishEventDialog = ({
           )}
         >
           <div className="min-h-0 min-w-0 space-y-3 overflow-y-auto overflow-x-hidden pr-1">
-          <div className="min-w-0 space-y-4 rounded-xl border p-4 [background-color:var(--ds-color-bg-surface)]">
-          {isReminder && !reminderOnly && (
-            <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
-          )}
-
-          {/*
-            Title, the date and the note were asked for in the calendar's own
-            modal. Asking again here would be asking twice.
-          */}
-          {rules.needsCompany && onStepTwo && (
-            <div className="space-y-1.5">
-              <Label>Company</Label>
-              <Combobox
-                value={draft.company}
-                placeholder="Select company"
-                options={COMPANY_OPTIONS.map((company) => ({ value: company, label: company }))}
-                onChange={(value) => form.setFieldValue('company', value)}
-              />
-            </div>
-          )}
-
-          {rules.info && !isReminder && onStepTwo && <InfoNote>{rules.info}</InfoNote>}
-
+          {/* Warnings first, outside the cards — they are about the whole event. */}
           {clashes.length > 0 && onStepTwo && (
             <p className="flex min-w-0 gap-2 rounded-lg border px-3 py-2 text-sm [background-color:var(--ds-color-warning-subtle)] [border-color:var(--ds-color-warning)] [color:var(--ds-color-warning-text)]">
               <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-              <span>
+              <span className="min-w-0">
                 {clashes.length === 1
                   ? '1 event clashes with this time'
                   : `${clashes.length} events clash with this time`}
@@ -278,68 +291,142 @@ const PublishEventDialog = ({
             </p>
           )}
 
-
-          {rules.needsMode && onStepTwo && (
-            <>
-              <div className="space-y-1.5">
-                <Label>
-                  Mode <Required />
-                </Label>
-                <RadioGroup
-                  className="flex flex-row flex-wrap gap-4 sm:gap-6"
-                  value={draft.mode}
-                  onValueChange={(value) => set('mode', value as EventMode)}
-                >
-                  {MODE_OPTIONS.map((option) => (
-                    <div key={option.value} className="flex items-center gap-2">
-                      <RadioGroupItem value={option.value} id={`mode-${option.value}`} />
-                      <Label htmlFor={`mode-${option.value}`} className="cursor-pointer font-normal">
-                        {option.label}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {errorFor('mode') && <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{errorFor('mode')}</p>}
-              </div>
-
-              {draft.mode === 'offline' && (
-                <Input
-                  name="venue"
-                  placeholder="Enter the venue"
-                  label={
-                    <>
-                      Venue <span className="[color:var(--ds-color-danger)]">*</span>
-                    </>
-                  }
-                  maxLength={VENUE_LENGTH}
-                  value={draft.venue}
-                  error={errorFor('venue')}
-                  onChange={form.handleChange}
-                  onBlur={form.handleBlur}
-                />
-              )}
-
-              {draft.mode === 'online' && (
-                <Input
-                  name="onlinePlatform"
-                  label={
-                    <>
-                      Online Platform <span className="[color:var(--ds-color-danger)]">*</span>
-                    </>
-                  }
-                  placeholder="Enter the meeting platform"
-                  hint="No meeting link is collected"
-                  value={draft.onlinePlatform}
-                  error={errorFor('onlinePlatform')}
-                  onChange={form.handleChange}
-                  onBlur={form.handleBlur}
-                />
-              )}
-            </>
+          {isReminder && !reminderOnly && (
+            <InfoNote icon={<Lock className="mt-0.5 size-3.5 shrink-0" />}>{REMINDER_PRIVACY}</InfoNote>
           )}
 
-          {rules.needsAudience && onStepTwo && (
-            <>
+          {/*
+            Title, the date and the note were asked for in the calendar's own
+            modal. Asking again here would be asking twice.
+          */}
+          <Section title="Event details">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-1.5">
+                <Label>
+                  Event type <Required />
+                </Label>
+                <Combobox
+                  searchable={false}
+                  value={draft.eventType}
+                  placeholder="Select event type"
+                  /*
+                    Edit me event kisi aur event type me badal sakta hai, par reminder
+                    nahi ban sakta — reminder backend me alag table me rehta hai.
+                  */
+                  options={EVENT_TYPE_OPTIONS.filter((option) => !isEdit || option.value !== 'my_reminder').map(
+                    (option) => ({ value: option.value, label: option.label }),
+                  )}
+                  onChange={pickType}
+                />
+              </div>
+
+              {draft.eventType === 'other' && (
+                <Input
+                  name="otherType"
+                  label={
+                    <>
+                      Specify event type <Required />
+                    </>
+                  }
+                  placeholder="e.g. Alumni Meet"
+                  maxLength={OTHER_TYPE_LENGTH}
+                  value={draft.otherType}
+                  error={errorFor('otherType')}
+                  onChange={form.handleChange}
+                  onBlur={form.handleBlur}
+                />
+              )}
+
+              {rules.needsCompany && onStepTwo && (
+                <div className="min-w-0 space-y-1.5">
+                  <Label>Company</Label>
+                  <Combobox
+                    value={draft.company}
+                    placeholder="Select company"
+                    options={COMPANY_OPTIONS.map((company) => ({ value: company, label: company }))}
+                    onChange={(value) => form.setFieldValue('company', value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {rules.info && !isReminder && onStepTwo && <InfoNote>{rules.info}</InfoNote>}
+          </Section>
+
+          {rules.needsMode && onStepTwo && (
+            <Section title="Venue" caption="Where the students attend.">
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[auto_minmax(0,1fr)]">
+                <div className="space-y-1.5">
+                  <Label>
+                    Mode <Required />
+                  </Label>
+                  {/* The two modes sit as one segmented control, the same height as the input beside it. */}
+                  <RadioGroup
+                    className="flex h-10 w-fit flex-row items-stretch gap-1 rounded-lg border p-1"
+                    value={draft.mode}
+                    onValueChange={(value) => set('mode', value as EventMode)}
+                  >
+                    {MODE_OPTIONS.map((option) => (
+                      <Label
+                        key={option.value}
+                        htmlFor={`mode-${option.value}`}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded-md px-3 text-sm font-normal focus-within:ring-2 focus-within:[--tw-ring-color:var(--ds-color-brand)]',
+                          draft.mode === option.value &&
+                            '[background-color:var(--ds-color-brand-subtle)] [color:var(--ds-color-brand)]',
+                        )}
+                      >
+                        <RadioGroupItem value={option.value} id={`mode-${option.value}`} className="sr-only" />
+                        {option.label}
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                  {errorFor('mode') && <p className="!mt-1 text-xs leading-4 [color:var(--ds-color-danger-text)]">{errorFor('mode')}</p>}
+                </div>
+
+                {draft.mode === 'offline' && (
+                  <Input
+                    name="venue"
+                    placeholder="e.g. Auditorium, Block A"
+                    label={
+                      <>
+                        Venue <Required />
+                      </>
+                    }
+                    maxLength={VENUE_LENGTH}
+                    value={draft.venue}
+                    error={errorFor('venue')}
+                    onChange={form.handleChange}
+                    onBlur={form.handleBlur}
+                  />
+                )}
+
+                {draft.mode === 'online' && (
+                  <Input
+                    name="onlinePlatform"
+                    label={
+                      <>
+                        Online platform <Required />
+                      </>
+                    }
+                    placeholder="e.g. Google Meet"
+                    hint="No meeting link is collected"
+                    value={draft.onlinePlatform}
+                    error={errorFor('onlinePlatform')}
+                    onChange={form.handleChange}
+                    onBlur={form.handleBlur}
+                  />
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/*
+            Edit me audience yahan nahi badalti — uska apna "Audience" dialog hai,
+            jo dikhata hai kaun judega, kaun hatega, aur unhe batata hai.
+          */}
+          {rules.needsAudience && onStepTwo && !isEdit && (
+            <Section title="Audience" caption="Who sees it and is notified. You can also choose this later.">
               <AudienceFields
                 idPrefix="publish-audience"
                 value={draft.audience}
@@ -351,17 +438,19 @@ const PublishEventDialog = ({
                   {(form.errors as Record<string, string>).audience}
                 </p>
               )}
-            </>
+            </Section>
           )}
 
           {/* Details and Repeat were set on the first step. */}
-          {!isReminder && (
-            <ImageField value={draft.imageUrl} onChange={(imageUrl) => form.setFieldValue('imageUrl', imageUrl)} />
-          )}
-
           {!isReminder && onStepTwo && (
-            <div className="min-w-0 space-y-1.5">
-              <Label className="block">Linked Job</Label>
+            <Section title="Extras">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <ImageField value={draft.imageUrl} onChange={(imageUrl) => form.setFieldValue('imageUrl', imageUrl)} />
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="block">Linked Job</Label>
 
               {draft.linkedJob ? (
                 <div className="flex min-w-0 items-start justify-between gap-2 rounded-md border px-3 py-2">
@@ -413,10 +502,10 @@ const PublishEventDialog = ({
                   Link a Job
                 </Button>
               )}
-
-            </div>
+                </div>
+              </div>
+            </Section>
           )}
-          </div>
 
           <LinkJobDialog
             open={linking}
@@ -439,7 +528,7 @@ const PublishEventDialog = ({
             </label>
           ) : (
           <span className="min-w-0 basis-full text-xs [color:var(--ds-color-text-secondary)] sm:flex-1 sm:basis-0 sm:text-sm">
-            {!rules.needsAudience || !onStepTwo
+            {!rules.needsAudience || !onStepTwo || isEdit
               ? ''
               : count > 0
                 ? `${count} students will be notified`
@@ -466,7 +555,7 @@ const PublishEventDialog = ({
             <Button type="button" variant="outline" onClick={close}>
               Cancel
             </Button>
-            <Button type="submit">Publish Event</Button>
+            <Button type="submit">{isEdit ? 'Save Changes' : isReminder ? 'Save Reminder' : 'Publish Event'}</Button>
           </span>
         </DialogFooter>
         </form>

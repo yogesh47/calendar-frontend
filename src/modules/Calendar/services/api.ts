@@ -20,6 +20,7 @@ export type ApiNotification = {
 type ApiEvent = {
   event_id: string
   event_type: string
+  other_type?: string | null
   title: string
   company: string | null
   event_date: string
@@ -146,6 +147,7 @@ const toEvent = (entry: ApiEvent): TpoEvent => ({
   draft: {
     ...EMPTY_DRAFT,
     eventType: entry.event_type as TpoDraft['eventType'],
+    otherType: entry.other_type ?? '',
     title: entry.title,
     company: entry.company ?? '',
     ...shownTimes(entry),
@@ -194,6 +196,7 @@ const timesFor = (draft: TpoDraft, zone: string) => {
 
 const toPayload = (draft: TpoDraft) => ({
   event_type: draft.eventType,
+  other_type: draft.eventType === 'other' ? draft.otherType.trim() : null,
   title: draft.title,
   company: draft.company || null,
   ...timesFor(draft, zoneFor(draft)),

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BellRing, Building2, ExternalLink, Globe, Link2, Users } from 'lucide-react'
+import { BellRing, Building2, ExternalLink, Globe, Link2, Tag, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { messageOf, showError, showInfo, showSuccess } from '@/lib/toast'
 import { Calendar, DetailRow } from '@/calendar'
@@ -89,7 +89,8 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
   const navigate = useNavigate()
   const calendar = useRef<CalendarHandle>(null)
   const isTpo = role === 'tpo'
-  const [publishing, setPublishing] = useState<TpoDraft | null>(null)
+  // The second step's draft, and whether it is a new event or an edit of one.
+  const [publishing, setPublishing] = useState<{ draft: TpoDraft; isEdit: boolean } | null>(null)
   const [dayEntries, setDayEntries] = useState<DayEntry[]>([])
   const [audienceFor, setAudienceFor] = useState<TpoEvent | null>(null)
   const [filters, setFilters] = useState<CalendarFilters>(EMPTY_FILTERS)
@@ -244,6 +245,13 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
           </DetailRow>
         )}
 
+        {/* "Other" alone says nothing — the TPO's own name for it does. */}
+        {draft.eventType === 'other' && draft.otherType && (
+          <DetailRow icon={Tag} label="Event type">
+            {draft.otherType}
+          </DetailRow>
+        )}
+
         {draft.company && (
           <DetailRow icon={Building2} label="Company">
             {draft.company}
@@ -326,7 +334,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
         onSyncSettingsChange={changeSyncSettings}
         resolveImageUrl={imageSrc}
         onNotice={sayNotice}
-        onNext={(draft) => setPublishing(draft as TpoDraft)}
+        onNext={(draft, { isEdit }) => setPublishing({ draft: draft as TpoDraft, isEdit })}
         onDayEntries={setDayEntries}
         eventActions={eventActions}
         renderEventDetails={eventDetails}
@@ -337,12 +345,12 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
 
       <PublishEventDialog
         open={Boolean(publishing)}
-        initial={publishing ?? EMPTY_DRAFT}
-        isEdit={false}
+        initial={publishing?.draft ?? EMPTY_DRAFT}
+        isEdit={publishing?.isEdit ?? false}
         dayEntries={dayEntries}
         /* Back — ye band, aur calendar ka modal wahi draft le kar wapas. */
         onBack={() => {
-          const draft = publishing
+          const draft = publishing?.draft
           setPublishing(null)
           if (draft) calendar.current?.openEntry(draft)
         }}
