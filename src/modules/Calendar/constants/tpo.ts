@@ -76,9 +76,6 @@ export const BATCH_OPTIONS: { year: number; label: string }[] = [
   { year: 2030, label: '2030 (First year)' },
 ]
 
-/** The backend caps a series at a year and at this many occurrences. */
-export const REPEAT_MAX_OCCURRENCES = 52
-
 export const MINOR_FIELDS: (keyof TpoDraft)[] = ['title', 'description', 'company']
 
 export const IMPORTANT_FIELD_LABEL: Partial<Record<keyof TpoDraft, string>> = {

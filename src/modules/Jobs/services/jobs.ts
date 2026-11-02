@@ -1,4 +1,3 @@
-import type { CalendarItem } from '@/calendar'
 
 export type CampusJob = {
   jobId: string
@@ -70,13 +69,3 @@ export const EXTERNAL_JOBS: ExternalJob[] = [
       'https://internshala.com/internship/detail/hr-recruitment-coordination-internship-in-indore-at-hirednex1784101862',
   },
 ]
-
-export const deadlineItems = (): CalendarItem[] =>
-  CAMPUS_JOBS.map((job) => ({
-    id: `deadline-${job.jobId}`,
-    kind: 'deadline',
-    title: `${job.company} ${job.title} — Applications close`,
-    startsAt: new Date(`${job.applicationEndDate}T00:00:00`).toISOString(),
-    isAllDay: true,
-    status: 'active',
-  }))

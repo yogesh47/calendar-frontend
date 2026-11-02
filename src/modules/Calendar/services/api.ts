@@ -239,9 +239,6 @@ const toPayload = (draft: TpoDraft) => ({
 export const fetchEvents = (): Promise<TpoEvent[]> =>
   share('events', async () => (await ask<ApiEvent[]>('/calendar/events')).map(toEvent))
 
-export const applyToJob = (jobId: string): Promise<{ application_id: string }> =>
-  ask<{ application_id: string }>(`/calendar/jobs/${jobId}/apply`, { method: 'POST' })
-
 export const fetchComingUp = async (limit = 3): Promise<TpoEvent[]> =>
   (await ask<ApiEvent[]>(`/calendar/coming-up?limit=${limit}`)).map(toEvent)
 
