@@ -1,9 +1,10 @@
 import {
-  eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday,
-  startOfMonth, startOfWeek,
+  eachDayOfInterval, endOfMonth, endOfWeek, format, isBefore, isSameDay, isSameMonth, isToday,
+  startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns'
 
 import ItemTile from '../ItemTile'
+import { useLabels } from '../../labels'
 import { cn } from '../../lib/utils'
 import { ChevronDown } from '../../icons'
 import { itemsOn } from '../../helpers/dates'
@@ -20,10 +21,14 @@ export type MonthGridProps = {
   selected?: Date
   onOpen?: (item: CalendarItem) => void
   onPickDate?: (day: Date) => void
+  /** May a day before today be picked to create on? Default: off — those days are greyed out. */
+  allowPastDates?: boolean
 }
 
-const MonthGrid = ({ month, items, selected, onOpen, onPickDate }: MonthGridProps) => {
+const MonthGrid = ({ month, items, selected, onOpen, onPickDate, allowPastDates = false }: MonthGridProps) => {
   const isMobile = useIsMobile()
+  const labels = useLabels()
+  const today = startOfDay(new Date())
   const days = eachDayOfInterval({
     start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
@@ -50,22 +55,29 @@ const MonthGrid = ({ month, items, selected, onOpen, onPickDate }: MonthGridProp
           const shown = isMobile ? dayItems.slice(0, 1) : split.shown
           const hiddenCount = isMobile ? Math.max(0, dayItems.length - 1) : split.hiddenCount
           const isSelected = Boolean(selected && isSameDay(day, selected))
+          // A gone day still shows its items, which open as usual; only creating on it is off.
+          const isGone = !allowPastDates && isBefore(day, today)
+          const canPick = Boolean(onPickDate) && !isGone
 
           return (
             <div
               key={day.toISOString()}
-              onClick={() => onPickDate?.(day)}
+              onClick={canPick ? () => onPickDate?.(day) : undefined}
+              // Not aria-disabled: that would mark the items inside as disabled too, and they still open.
+              data-past={isGone || undefined}
+              title={isGone ? labels.state.pastTime : undefined}
               className={cn(
                 'flex min-h-[4.5rem] min-w-0 flex-col gap-0.5 overflow-hidden border-b border-r p-1 transition-colors sm:min-h-[7.5rem] sm:gap-1 sm:p-1.5',
-                !isSameMonth(day, month) && '[background-color:var(--ds-color-bg-subtle)]',
-                onPickDate && 'cursor-pointer hover:[background-color:var(--ds-color-bg-muted)]',
+                (!isSameMonth(day, month) || isGone) && '[background-color:var(--ds-color-bg-subtle)]',
+                isGone && 'cursor-not-allowed [background-image:repeating-linear-gradient(135deg,transparent_0_7px,var(--ds-color-border-default)_7px_8px)]',
+                canPick && 'cursor-pointer hover:[background-color:var(--ds-color-bg-muted)]',
                 isSelected && 'ring-2 ring-inset [--tw-ring-color:var(--ds-color-brand)]',
               )}
             >
               <span
                 className={cn(
                   'grid size-5 shrink-0 place-items-center self-start rounded-full text-[0.6875rem] font-semibold sm:size-6 sm:text-xs',
-                  !isSameMonth(day, month) && '[color:var(--ds-color-text-tertiary)]',
+                  (!isSameMonth(day, month) || isGone) && '[color:var(--ds-color-text-tertiary)]',
                   isToday(day) && '[background-color:var(--ds-color-brand)] [color:var(--ds-color-brand-fg)]',
                 )}
               >

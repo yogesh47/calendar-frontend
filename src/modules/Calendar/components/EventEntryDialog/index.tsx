@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { format } from 'date-fns'
+import { format, subMinutes } from 'date-fns'
 import { AlignLeft, Bell, CalendarPlus, Clock, Repeat, StickyNote, Trash2, Type, Wand2 } from 'lucide-react'
 import { useFormik, validateYupSchema, yupToFormErrors } from 'formik'
 import { cn } from '@/lib/utils'
@@ -89,6 +89,7 @@ const CalendarEntryDialog = ({
           isTimed: (eventType: string) => isTimed(eventTypes, eventType),
           ownReminder: reminderOnly,
           allowPastDates,
+          keptStart: isEdit && initial.startTime ? `${initial.eventDate}T${initial.startTime}` : undefined,
         })
       } catch (error) {
         return yupToFormErrors(error)
@@ -104,6 +105,14 @@ const CalendarEntryDialog = ({
   })
 
   const draft = form.values
+  /*
+    Past days and times are off (the app's \`allowPastDates\`), except for a TPO's
+    own reminder: the date picker starts at today, and on today the start time
+    starts at the next minute.
+  */
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const blocksPast = !allowPastDates && !(draft.eventType === REMINDER_TYPE && !reminderOnly)
+  const earliestStart = blocksPast && draft.eventDate === today ? format(subMinutes(new Date(), 1), 'HH:mm') : undefined
   const timed = isTimed(eventTypes, draft.eventType)
   const isReminder = draft.eventType === REMINDER_TYPE
   /*
@@ -295,6 +304,7 @@ const CalendarEntryDialog = ({
                           showMonthPicker
                           showYearPicker
                           yearRange={{ from: new Date().getFullYear() - 1, to: new Date().getFullYear() + 5 }}
+                          min={blocksPast ? today : undefined}
                           value={draft.eventDate}
                           hasError={Boolean(errorFor('eventDate'))}
                           onChange={setStartDate}
@@ -304,6 +314,7 @@ const CalendarEntryDialog = ({
                       <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
                         <TimeSelect
                           value={draft.startTime}
+                          after={earliestStart}
                           onChange={(value) => {
                             form.setFieldValue('startTime', value)
                             if (!timed) return

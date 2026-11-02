@@ -438,7 +438,7 @@ Neeche ke phases plan hain; asli code me frontend do hisson me hai:
 - **Cancel / Delete** view ya edit se → **Go Back** wahin laut-ta hai (edit ka unsaved input bacha rehta hai).
 - **Sync** toolbar se → app ka `SyncDialog` (`.ics` feed link, Google / Outlook).
 - **Bell / dashboard / reminders popup se kholna** → `requestOpenEvent(id)` (`services/openEvent.ts`) → page ka view modal khulta hai; page abhi khula na ho to load hone par.
-- **Past date:** `ALLOW_PAST_DATES = false` — past din par click ya create button kuch nahi kholta, calendar `onNotice({ type: 'past-date' })` bhejta hai; form bhi aaj ya aage ki date maangta hai (events aur reminders dono).
+- **Past date aur time:** calendar ka prop `allowPastDates` (default **off**; app me `ALLOW_PAST_DATES = false`). Off par Month view me aaj se pehle ke din aur Week / Day view me aaj ke beete ghante **fike (greyed out)** dikhte hain aur click nahi hote (tooltip: "This time has passed…"); un dinon ke events phir bhi khulte hain. Past din par create button kuch nahi kholta, `onNotice({ type: 'past-date' })` bhejta hai. Form me date picker aaj se shuru hota hai, aur aaj ki date par start time sirf abhi ke baad ka chuna ja sakta hai ("Pick a time later than now."). Edit me pehle se bana start time bana reh sakta hai. TPO ka apna My Reminder is rule se bahar hai. `true` dene par sab chalu.
 
 ---
 

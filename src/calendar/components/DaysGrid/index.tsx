@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { format, isSameDay, isToday } from 'date-fns'
+import { format, isBefore, isSameDay, isToday, startOfDay } from 'date-fns'
 
 import ItemTile from '../ItemTile'
+import { useLabels } from '../../labels'
 import { cn } from '../../lib/utils'
 import { styleOf } from '../../helpers'
 import type { CalendarItem } from '../../types'
@@ -15,6 +16,8 @@ export type DaysGridProps = {
   items: CalendarItem[]
   onOpen?: (item: CalendarItem) => void
   onPickDate?: (day: Date) => void
+  /** May a day or hour already gone be picked to create on? Default: off — those are greyed out. */
+  allowPastDates?: boolean
 }
 
 const HOUR_HEIGHT = 3
@@ -24,8 +27,9 @@ const minutesOf = (value: string): number => {
   return moment.getHours() * 60 + moment.getMinutes()
 }
 
-const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
+const DaysGrid = ({ days, items, onOpen, onPickDate, allowPastDates = false }: DaysGridProps) => {
   const isMobile = useIsMobile()
+  const labels = useLabels()
   const scroller = useRef<HTMLDivElement>(null)
   const [now, setNow] = useState(new Date())
 
@@ -33,6 +37,11 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
     const timer = window.setInterval(() => setNow(new Date()), 60000)
     return () => window.clearInterval(timer)
   }, [])
+
+  // A day before today, or an hour of today that has fully gone by.
+  const dayGone = (day: Date) => !allowPastDates && isBefore(day, startOfDay(now))
+  const hourGone = (day: Date, hour: number) =>
+    dayGone(day) || (!allowPastDates && isToday(day) && (hour + 1) * 60 <= now.getHours() * 60 + now.getMinutes())
 
   useEffect(() => {
     if (!scroller.current) return
@@ -68,10 +77,15 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
           <button
             key={day.toISOString()}
             type="button"
+            disabled={dayGone(day)}
+            title={dayGone(day) ? labels.state.pastTime : undefined}
             onClick={() => onPickDate?.(day)}
             className={cn(
-              'flex cursor-pointer flex-col border-r px-1 py-2 text-left last:border-r-0 sm:px-2',
-              onPickDate && 'hover:[background-color:var(--ds-color-bg-muted)]',
+              'flex flex-col border-r px-1 py-2 text-left last:border-r-0 sm:px-2',
+              dayGone(day)
+                ? 'cursor-not-allowed [background-color:var(--ds-color-bg-subtle)] [background-image:repeating-linear-gradient(135deg,transparent_0_7px,var(--ds-color-border-default)_7px_8px)] [&>span]:![color:var(--ds-color-text-tertiary)]'
+                : 'cursor-pointer',
+              onPickDate && !dayGone(day) && 'hover:[background-color:var(--ds-color-bg-muted)]',
             )}
           >
             <span
@@ -128,9 +142,15 @@ const DaysGrid = ({ days, items, onOpen, onPickDate }: DaysGridProps) => {
                 {Array.from({ length: 24 }, (_, hour) => (
                   <div
                     key={hour}
-                    className={cn('border-b', onPickDate && 'cursor-pointer hover:[background-color:var(--ds-color-bg-subtle)]')}
+                    title={hourGone(day, hour) ? labels.state.pastTime : undefined}
+                    className={cn(
+                      'border-b',
+                      hourGone(day, hour)
+                        ? 'cursor-not-allowed [background-color:var(--ds-color-bg-subtle)] [background-image:repeating-linear-gradient(135deg,transparent_0_7px,var(--ds-color-border-default)_7px_8px)]'
+                        : onPickDate && 'cursor-pointer hover:[background-color:var(--ds-color-bg-subtle)]',
+                    )}
                     style={{ height: `${HOUR_HEIGHT}rem` }}
-                    onClick={() => onPickDate?.(day)}
+                    onClick={hourGone(day, hour) ? undefined : () => onPickDate?.(day)}
                   >
                     <div className="h-1/2 border-b border-dashed [border-color:var(--ds-color-border-default)]" />
                   </div>

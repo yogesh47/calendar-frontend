@@ -95,9 +95,11 @@ export interface CalendarProps {
   /** Upcoming reminders one person may keep, when they cannot create events. */
   maxUpcomingReminders?: number
   /**
-   * May an item be created on a day already gone? Off: a click on a past day,
-   * or the create button while a past day is in view, opens nothing — it sends
-   * `onNotice({ type: 'past-date' })` instead of `onCreateRequest`. Default: on.
+   * May an item be created in the past? Default: off. Off: days before today
+   * and hours of today already gone are greyed out and cannot be picked; the
+   * create button while a past day is in view opens nothing and sends
+   * `onNotice({ type: 'past-date' })` instead of `onCreateRequest`. Pass `true`
+   * to allow it.
    */
   allowPastDates?: boolean
   /*
@@ -126,7 +128,7 @@ const Calendar = ({
   draftDefaults,
   toolbarExtras,
   maxUpcomingReminders = LIMITS.upcomingReminders,
-  allowPastDates = true,
+  allowPastDates = false,
   views = ALL_VIEWS,
   defaultView,
   showSidebar = true,
@@ -333,6 +335,7 @@ const Calendar = ({
                 <DaysGrid
                   days={shownDays}
                   items={visible}
+                  allowPastDates={allowPastDates}
                   onOpen={(item) => openItem(item.id)}
                   onPickDate={(day) => {
                     setSelectedDay(day)
@@ -344,6 +347,7 @@ const Calendar = ({
                 <MonthGrid
                   month={month}
                   items={visible}
+                  allowPastDates={allowPastDates}
                   selected={selectedDay}
                   onOpen={(item) => openItem(item.id)}
                   onPickDate={(day) => {

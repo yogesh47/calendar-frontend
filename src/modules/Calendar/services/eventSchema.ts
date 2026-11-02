@@ -11,7 +11,21 @@ const todayValue = (): string => format(new Date(), 'yyyy-MM-dd')
   the form passes it in as `context.isTimed`. Everything the app adds on top of
   the calendar's fields it validates itself.
 */
-type SchemaContext = { isTimed?: (eventType: string) => boolean; ownReminder?: boolean; allowPastDates?: boolean }
+type SchemaContext = {
+  isTimed?: (eventType: string) => boolean
+  ownReminder?: boolean
+  allowPastDates?: boolean
+  /** Editing: the start it already had ("YYYY-MM-DDTHH:mm"), which may stay even once it has gone by. */
+  keptStart?: string
+}
+
+// Past days are off for this item: the app said so, and it is not a TPO's own reminder.
+function blocksPast(this: { parent: { eventType: string }; options: { context?: SchemaContext } }): boolean {
+  const context = this.options.context
+  if (context?.allowPastDates) return false
+
+  return !(this.parent.eventType === REMINDER_TYPE && !context?.ownReminder)
+}
 
 function timed(this: { options: { context?: SchemaContext } }, eventType: string): boolean {
   return Boolean(this.options.context?.isTimed?.(eventType))
@@ -24,15 +38,22 @@ export const eventSchema = yup.object({
     .string()
     .required('Date is required.')
     .test('not-past', 'Date must be today or later.', function (value) {
-      if (!value) return true
-      if (this.options.context?.allowPastDates) return true
-      if (this.parent.eventType === REMINDER_TYPE && !this.options.context?.ownReminder) return true
+      if (!value || !blocksPast.call(this)) return true
 
       return value >= todayValue()
     }),
-  startTime: yup.string().test('start-needed', 'Start time is required.', function (value) {
-    return !timed.call(this, this.parent.eventType) || Boolean(value)
-  }),
+  startTime: yup
+    .string()
+    .test('start-needed', 'Start time is required.', function (value) {
+      return !timed.call(this, this.parent.eventType) || Boolean(value)
+    })
+    .test('not-past-time', 'Pick a time later than now.', function (value) {
+      const { eventDate } = this.parent
+      if (!value || eventDate !== todayValue() || !blocksPast.call(this)) return true
+      if (this.options.context?.keptStart === `${eventDate}T${value}`) return true
+
+      return value > format(new Date(), 'HH:mm')
+    }),
   endDate: yup
     .string()
     .test('end-date-after-start', 'End date cannot be before the start date.', function (value) {

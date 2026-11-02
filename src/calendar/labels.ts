@@ -24,6 +24,7 @@ export const DEFAULT_LABELS = {
   },
   state: {
     retry: 'Retry',
+    pastTime: 'This time has passed. New events and reminders start from now.',
   },
 }
 

@@ -10,7 +10,8 @@ docs/
 ├── calendar-usage.md                      headless <Calendar /> kaise use karein: har prop, callback, label, icon, piece
 │                                          (= src/calendar/README.md, byte-for-byte same)
 ├── nudges.md                              nudges (requirements ke hisab se): kya, kyo, kab, kaha, kaise save
-├── high-level-use-cases.md                80 must-have use cases: the 60 given + 20 important additions, + nudge screen map, ✅ / ❌
+├── high-level-use-cases.md                86 main use cases grouped by functionality, with status, + where the POC differs from the BRD
+├── high-level-use-cases.xlsx               same in Excel: Summary (counts by status and group), Use Cases, Types, Event Types, BRD Differences
 ├── use-cases-status.md                    75 use cases (the 60 given + 15 missing): ✅ 46 · ❌ 29, with notes
 ├── use-cases.md                           full use-case list (213, incl. job post lifecycle + external events) + the original 60 (§17)
 └── requirements/                          product team ne di — AS-IS, edit mat karna

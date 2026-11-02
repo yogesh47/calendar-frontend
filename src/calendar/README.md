@@ -118,7 +118,7 @@ const MyCalendarPage = () => {
         onRetry={load}
         permissions={{ createEvents: true }}
         eventTypes={[{ value: 'meeting', label: 'Meeting', timed: true }]}
-        allowPastDates={false}            // no create on a day already gone
+        // allowPastDates                  // off by default: nothing is created in the past; pass it to allow
         onViewEvent={setViewing}          // a tile was clicked
         onCreateRequest={setCreating}     // "New Event" / an empty day — with a draft for it
         onNotice={(notice) => notice.type === 'past-date' && toast.info('Pick today or later.')}
@@ -247,7 +247,7 @@ The first entry is the default type of a new event.
 |---|---|---|---|
 | `permissions` | `{ createEvents?: boolean; createReminders?: boolean }` | `{}` → reminders only | See [section 6](#6-permissions-and-ownership) |
 | `maxUpcomingReminders` | `number` | `50` | Cap on upcoming reminders for someone who cannot create events; hitting it sends `onNotice({ type: 'reminder-limit', limit })` |
-| `allowPastDates` | `boolean` | `true` | Off: a click on a past day, or the create button while a past day is in view, opens nothing and sends `onNotice({ type: 'past-date', date })` |
+| `allowPastDates` | `boolean` | `false` | Off (default): days before today, and hours of today already gone, are greyed out and cannot be clicked; the create button while a past day is in view opens nothing and sends `onNotice({ type: 'past-date', date })`. Pass `true` to allow creating in the past |
 
 ### 4.4 The app's vocabulary
 
@@ -292,8 +292,9 @@ None of them returns anything and none opens anything: the app shows its own mod
 | `onNotice` | Something the calendar noticed (see below) | `CalendarNotice` |
 
 The calendar still keeps two rules before `onCreateRequest`: past `maxUpcomingReminders`
-it sends `onNotice({ type: 'reminder-limit' })`, and with `allowPastDates={false}` a past
-day sends `onNotice({ type: 'past-date', date })` — no create is asked for in either case.
+it sends `onNotice({ type: 'reminder-limit' })`, and while `allowPastDates` is off (the default)
+past days and hours cannot be picked, and the create button on a past day sends
+`onNotice({ type: 'past-date', date })` — no create is asked for in either case.
 The app's own create form should follow the same setting.
 
 ### 5.1 `onNotice` — the calendar's own messages, without words
@@ -361,6 +362,7 @@ Type: `CalendarLabelsInput` (what you pass) → `CalendarLabels` (all words, aft
 | | `viewDay`, `viewWeek`, `viewMonth`, `viewList` | Day, Week, Month, List |
 | `dayJump` | `today` | Today |
 | `state` | `retry` | Retry |
+| `state` | `pastTime` | This time has passed. New events and reminders start from now. (tooltip on a greyed-out day or hour) |
 
 `createLabel` overrides only the create button, whichever text it would show.
 
@@ -499,8 +501,8 @@ const items = events.map((event) => itemFromEvent(event, eventTypes))
 |---|---|---|
 | `MiniCalendar` | `month: Date`, `selected: Date`, `onMonthChange(month)`, `onPick(day)`, `rangeStart?: Date`, `rangeDays?: number`, `className?` | The small month in the sidebar; `rangeStart` + `rangeDays` highlight a range |
 | `DayJump` | `date: string` (yyyy-MM-dd), `onDateChange(date)`, `label?`, `className?` | Date button that opens a day / month / year picker with "Today" |
-| `MonthGrid` | `month: Date`, `items: CalendarItem[]`, `selected?: Date`, `onOpen?(item)`, `onPickDate?(day)` | Month view |
-| `DaysGrid` | `days: Date[]`, `items`, `onOpen?(item)`, `onPickDate?(day)` | Day / week time grid — pass 1 to 7 days |
+| `MonthGrid` | `month: Date`, `items: CalendarItem[]`, `selected?: Date`, `onOpen?(item)`, `onPickDate?(day)`, `allowPastDates?` (default `false`: past days greyed out, not pickable) | Month view |
+| `DaysGrid` | `days: Date[]`, `items`, `onOpen?(item)`, `onPickDate?(day)`, `allowPastDates?` (default `false`: past days and hours greyed out, not pickable) | Day / week time grid — pass 1 to 7 days |
 | `ListView` | `month: Date`, `items`, `onOpen?(item)` | List grouped by day |
 | `WeekStrip` | `selected: Date`, `onPick(day)` | A week of days to pick from (mobile) |
 | `DayPreview` | `date`, `startTime`, `endTime`, `title`, `entries: DayEntry[]`, `onDateChange(date)`, `onTimeChange?(start, end)` | One day's timeline beside a form; drag / resize the block; shows clashes |
