@@ -12,11 +12,20 @@ export type ItemStatus = 'active' | 'cancelled' | 'updated' | 'not_applicable' |
 export type CalendarView = 'day' | 'month' | 'week' | 'list'
 
 /** What one person's calendar sync carries to Google / Outlook. */
+/** How one end of the synced range is set: a count of days, everything, or a fixed date. */
+export type SyncRangeMode = 'days' | 'all' | 'date'
+
 export type CalendarSyncSettings = {
-  /** Days before today. */
+  /** Days before today (when `pastMode` is "days"). */
   pastDays: number
-  /** Days after today. */
+  /** Days after today (when `futureMode` is "days"). */
   futureDays: number
+  pastMode: SyncRangeMode
+  /** The first day, YYYY-MM-DD (when `pastMode` is "date"). */
+  pastFrom: string
+  futureMode: SyncRangeMode
+  /** The last day, YYYY-MM-DD (when `futureMode` is "date"). */
+  futureTo: string
   events: boolean
   deadlines: boolean
   reminders: boolean

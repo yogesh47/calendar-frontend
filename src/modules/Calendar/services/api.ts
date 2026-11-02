@@ -3,7 +3,7 @@ import { readSession } from '@/modules/Auth/services'
 import axiosInstance from '@/api/axiosInstance'
 import { browserZone, instantIn, wallClockIn } from '@/lib/timeZone'
 import type { WallClock } from '@/lib/timeZone'
-import type { CalendarSyncSettings } from '@/calendar'
+import type { CalendarSyncSettings, SyncRangeMode } from '@/calendar'
 import { CANCEL_REASON_LABEL, EMPTY_DRAFT } from '../constants/tpo'
 import { rulesFor } from '../helpers/tpo'
 import type { Audience, CancelReason, TpoDraft, TpoEvent } from '../types/tpo'
@@ -297,6 +297,10 @@ export const imageSrc = (imageUrl: string): string => (imageUrl ? `${API_BASE_UR
 type ApiFeedSettings = {
   past_days: number
   future_days: number
+  past_mode: SyncRangeMode
+  past_from: string | null
+  future_mode: SyncRangeMode
+  future_to: string | null
   events: boolean
   deadlines: boolean
   reminders: boolean
@@ -306,6 +310,10 @@ type ApiFeedSettings = {
 const toSyncSettings = (entry: ApiFeedSettings): CalendarSyncSettings => ({
   pastDays: entry.past_days,
   futureDays: entry.future_days,
+  pastMode: entry.past_mode ?? 'days',
+  pastFrom: entry.past_from ?? '',
+  futureMode: entry.future_mode ?? 'days',
+  futureTo: entry.future_to ?? '',
   events: entry.events,
   deadlines: entry.deadlines,
   reminders: entry.reminders,
@@ -323,6 +331,10 @@ export const saveSyncSettings = async (settings: CalendarSyncSettings): Promise<
       data: {
         past_days: settings.pastDays,
         future_days: settings.futureDays,
+        past_mode: settings.pastMode,
+        past_from: settings.pastMode === 'date' ? settings.pastFrom : null,
+        future_mode: settings.futureMode,
+        future_to: settings.futureMode === 'date' ? settings.futureTo : null,
         events: settings.events,
         deadlines: settings.deadlines,
         reminders: settings.reminders,

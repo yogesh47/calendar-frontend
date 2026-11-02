@@ -17,6 +17,7 @@ export type {
   CalendarItem,
   CalendarItemKind,
   CalendarSyncSettings,
+  SyncRangeMode,
   CalendarView,
   EventDraft,
   ItemStatus,
