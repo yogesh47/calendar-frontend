@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { ModalBody, ModalFooter, ModalHeader, modalContentClass } from '@/modules/Calendar/components/Modal'
 import ClashWarning from '../ClashWarning'
+import CompanyHint from '../CompanyHint'
 import LinkJobDialog from './components/LinkJobDialog'
 import { overlaps } from '@/calendar'
 import { labelFor, rulesFor } from '../../helpers/tpo'
@@ -23,6 +24,7 @@ import { COMPANY_OPTIONS } from '../../constants'
 import { MODE_OPTIONS } from './PublishEventDialog.constants'
 import { InfoNote, Required, Section } from '../parts'
 import type { DayEntry } from '@/calendar'
+import type { CompanyEvent } from '../../helpers/drafts'
 import type { TpoDraft, TpoEventType, EventMode, LinkedJob } from '../../types/tpo'
 
 interface PublishEventDialogProps {
@@ -35,6 +37,8 @@ interface PublishEventDialogProps {
   canCancelEvent?: boolean
   canDeleteReminder?: boolean
   dayEntries: DayEntry[]
+  /** Campus events still ahead that name a company — for the company hint. */
+  companyEvents?: CompanyEvent[]
   onClose: () => void
   onOpenJob?: () => void
   onCancelEvent?: () => void
@@ -54,6 +58,7 @@ const PublishEventDialog = ({
   canCancelEvent,
   canDeleteReminder,
   dayEntries,
+  companyEvents = [],
   onClose,
   onOpenJob,
   onCancelEvent,
@@ -312,6 +317,20 @@ const PublishEventDialog = ({
                 </div>
               )}
             </div>
+
+            {rules.needsCompany && onStepTwo && (
+              <CompanyHint
+                company={draft.company}
+                events={companyEvents
+                  .filter((event) => event.company === draft.company)
+                  .map((event) => ({
+                    ...event,
+                    // "Other" alone says nothing — the TPO's own name for it does.
+                    typeLabel:
+                      event.eventType === 'other' && event.otherType ? event.otherType : labelFor(event.eventType as TpoEventType),
+                  }))}
+              />
+            )}
 
             {rules.info && !isReminder && onStepTwo && <InfoNote>{rules.info}</InfoNote>}
           </Section>

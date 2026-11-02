@@ -690,6 +690,19 @@ Count `0` ho to **Publish disable** ho jaye.
 Company chunne par us company ke pehle se plan kiye events dikhao — sirf
 jaankari ke liye, rokna nahi hai (FR-CAL-05).
 
+**Bana hai (2 Nov 2026):** Publish step me Company dropdown ke neeche
+`components/CompanyHint` — "Existing Deloitte events", phir har line
+"Online Assessment — 8 Nov (Arjun Mehta)". Data `helpers/drafts.ts` ka
+`companyEventsOf(events, editingId)` deta hai — page par pehle se load events
+se, koi naya API nahi:
+
+- sirf aaj ya aage ke events; cancelled, My Reminder, nudge aur job ki apni
+  deadline nahi; edit ho raha event khud nahi
+- repeating event ek hi line (agli date + ", repeats")
+- "Other" par TPO ka diya naam ("Alumni Meet"), "Other" nahi
+- pehle 3, phir "+N more" / "Show less"
+- save kabhi nahi rokta
+
 #### Step 4.4 — Edit  ·  `T-05`
 
 - Sirf creator. `event_type` doosre event type me badal sakta hai, par **My

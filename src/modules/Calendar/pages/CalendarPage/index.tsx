@@ -21,7 +21,7 @@ import AudienceDialog from '../../components/AudienceDialog'
 import FilterBar from '../../components/FilterBar'
 import { format } from 'date-fns'
 import { NUDGE_TYPE, REMINDER_TYPE } from '@/calendar'
-import { dayEntriesOf, reminderFor } from '@/modules/Calendar/helpers/drafts'
+import { companyEventsOf, dayEntriesOf, reminderFor } from '@/modules/Calendar/helpers/drafts'
 import EventEntryDialog from '../../components/EventEntryDialog'
 import PublishEventDialog from '../../components/PublishEventDialog'
 import EventDetailModal from '../../components/EventDetailModal'
@@ -467,6 +467,7 @@ const CalendarPage = ({ title = 'Campus Calendar', role }: CalendarPageProps) =>
         initial={publish?.draft ?? EMPTY_DRAFT}
         isEdit={Boolean(publish?.editing)}
         dayEntries={dayEntriesOf(events, editing?.id)}
+        companyEvents={companyEventsOf(events, editing?.id)}
         onBack={(draft) => publish && setModal({ kind: 'entry', draft, editing: publish.editing })}
         onClose={close}
         onSave={(draft) => save(draft, publish?.editing ?? null)}

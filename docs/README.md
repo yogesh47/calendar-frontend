@@ -9,6 +9,10 @@ docs/
 ├── timezone.md                            time zones: login, signup, event create — kya bhejna hai
 ├── calendar-usage.md                      headless <Calendar /> kaise use karein: har prop, callback, label, icon, piece
 │                                          (= src/calendar/README.md, byte-for-byte same)
+├── nudges.md                              nudges (requirements ke hisab se): kya, kyo, kab, kaha, kaise save
+├── high-level-use-cases.md                80 must-have use cases: the 60 given + 20 important additions, + nudge screen map, ✅ / ❌
+├── use-cases-status.md                    75 use cases (the 60 given + 15 missing): ✅ 46 · ❌ 29, with notes
+├── use-cases.md                           full use-case list (213, incl. job post lifecycle + external events) + the original 60 (§17)
 └── requirements/                          product team ne di — AS-IS, edit mat karna
     ├── campus-calendar-hld.md
     ├── campus-calendar-brd.md
@@ -33,6 +37,7 @@ docs/
 | `campus-calendar-v1.1-status.md` | 184 | v1.1 ke 7 faisle aur unka haal — purani report; upar 2026-10-30 ka note ki `onNext`/ref design ab headless calendar se badal gaya |
 | `timezone.md` | 534 | Zone kab, kahan, kaise — sign-in, event / reminder save, nudges, notifications, "Campus time" row, tests |
 | `calendar-usage.md` | 569 | Calendar package ka poora use — props, callbacks, labels, icons, app ke modals ka pattern, pieces, helpers |
+| `nudges.md` | 161 | Nudges sirf requirements ke hisab se — N-S1/S2/S3, kaha dikhte hain, rules, Super Admin settings, kya save hota hai |
 
 ## Teen files jo product team ne di (`requirements/`)
 
